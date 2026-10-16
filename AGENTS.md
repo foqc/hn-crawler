@@ -1,30 +1,12 @@
 # AGENTS.md
 
-Guidance for AI coding agents (and humans) working in this repository.
+Hacker News crawler (coding exercise): scrapes the front page, exposes filters through a Fastify API
+and logs usage to SQLite. Business rules and assumptions live in the
+[README](README.md#requirements--assumptions) and are specified by the tests — change both together.
 
-## Project
-
-A Hacker News crawler written as a coding exercise: it scrapes the front page, exposes filters
-through an HTTP API and stores usage data for every request.
-
-Business rules and documented assumptions live in the README
-([Requirements & assumptions](README.md#requirements--assumptions)) and are specified by the tests.
-They are the single source of truth: never change one without updating the other.
-
-## Stack
-
-Node.js >= 22.13 · TypeScript 6 (strict) · Fastify · cheerio · `node:sqlite` · Jest + ts-jest ·
-ESLint + Prettier · Husky + lint-staged + commitlint.
-
-Do not upgrade TypeScript to 7: ts-jest and typescript-eslint do not support it yet.
-
-## Commands
-
-```bash
-npm test           # run all tests
-npm run lint       # ESLint (type-aware)
-npm run format     # Prettier
-```
+Node >= 22.13 (`node:sqlite`). `npm test` and `npm run lint` must pass; Husky enforces formatting,
+lint and Conventional Commits, so never use `--no-verify`. Keep TypeScript on 6.x: ts-jest and
+typescript-eslint don't support 7 yet.
 
 ## Architecture
 
@@ -36,46 +18,23 @@ src/
   usage/     UsageRepository interface + SQLite implementation
   service/   EntriesService: orchestrates cache, scraping, filtering and usage logging
   http/      Fastify app (routes + schemas) and server entrypoint
-tests/       mirrors src/; fixtures live in tests/fixtures/
+tests/       mirrors src/; fixtures in tests/fixtures/
 ```
 
-Dependencies point inwards: `http -> service -> (scraper, cache, usage) -> domain`. The domain never
-imports from outer layers.
+Dependencies point inwards (`http -> service -> scraper/cache/usage -> domain`).
 
-## Coding conventions
+## Design choices
 
-- **Functional core, object-oriented shell**: domain logic is pure functions over immutable data.
-  Use classes only for components with dependencies or state (scraper, cache, repository, service).
-- **Dependency injection by constructor**: classes receive collaborators (`fetch`, clock, repository)
-  as parameters; nothing is instantiated inside business logic. Wiring happens only in the server
-  entrypoint.
-- **Program to interfaces** at the boundaries (`UsageRepository`), not to concrete implementations.
-- **No repetition**: filters are data (`{ predicate, sortBy }`) in a single map, applied by one
-  generic function. Adding a filter must be a one-line change.
-- **Immutability**: never mutate inputs (copy before `sort`); prefer `readonly` properties and arrays.
-- **Types**: no `any` (use `unknown` and narrow); explicit return types on exported functions;
-  `import type` for type-only imports; derive types from constants instead of duplicating them.
-- **Naming**: descriptive, intention-revealing names; files in camelCase, classes in PascalCase.
-- **Errors**: throw meaningful errors at the boundaries (non-2xx responses, invalid input); never
-  swallow them silently.
-- **Comments** explain _why_, not _what_. Keep them short.
-- **Keep it simple**: no new dependency or abstraction without a concrete reason; document the reason
-  in the README's design decisions section.
+- Functional core, OO shell: the domain is pure functions over readonly data; classes only for
+  components with dependencies or state, injected through the constructor and wired in the server
+  entrypoint only.
+- Filters are data (`{ predicate, sortBy }`) applied by one generic function — a new filter is one line.
+- Tests never hit the network: HTML fixture, injected `fetch` and clock, SQLite `:memory:`. Each
+  behaviour change ships with its tests.
 
-## Testing conventions
+## Workflow
 
-- Every behaviour change ships with its tests in the same commit.
-- Tests never hit the network: use the HTML fixture, injected `fetch`, injected clock and SQLite
-  `:memory:`.
-- Prefer `test.each` tables for input/output cases.
-- Each documented assumption has at least one test that proves it.
-- Test names describe behaviour: `it('orders by comments descending')`.
+Commits are atomic and green, e.g. `feat(domain): add word counting`. Run the `pre-commit-review`
+skill before committing.
 
-## Git workflow
-
-- Small, atomic commits; every commit builds, lints and passes the tests.
-- Conventional Commits (`feat:`, `fix:`, `test:`, `refactor:`, `docs:`, `chore:`), enforced by
-  commitlint. Subject in imperative mood; body explains _why_ when it is not obvious.
-- Hooks: `pre-commit` formats and lints staged files, `commit-msg` validates the message,
-  `pre-push` runs lint and tests. Never bypass them with `--no-verify`.
-- Before committing, run the `pre-commit-review` skill (`.claude/skills/pre-commit-review`).
+Everything written is English (code, comments, docs, commits); you may be spoken to in Spanish.
