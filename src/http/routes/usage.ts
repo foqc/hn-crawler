@@ -1,5 +1,5 @@
 import type { FastifyPluginCallback } from 'fastify';
-import type { UsageService } from '../../application/usageService';
+import { USAGE_LIMIT, type UsageService } from '../../application/usageService';
 
 const usageRecordSchema = {
   type: 'object',
@@ -19,7 +19,14 @@ const usageRecordSchema = {
 const schema = {
   querystring: {
     type: 'object',
-    properties: { limit: { type: 'integer', minimum: 1, maximum: 500, default: 50 } },
+    properties: {
+      limit: {
+        type: 'integer',
+        minimum: USAGE_LIMIT.min,
+        maximum: USAGE_LIMIT.max,
+        default: USAGE_LIMIT.default,
+      },
+    },
   },
   response: {
     200: {

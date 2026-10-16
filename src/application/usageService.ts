@@ -1,6 +1,9 @@
 import type { AppliedFilter, StoredUsageRecord, UsageRecord } from '../domain/usage';
 import type { Clock, UsageRepository } from './ports';
 
+/** Bounds for usage queries, shared by every entrypoint (HTTP, CLI). */
+export const USAGE_LIMIT = { min: 1, max: 500, default: 50 } as const;
+
 /** How a request ended; the rest of the usage record is filled in by `record`. */
 export type UsageOutcome = Pick<
   UsageRecord,
