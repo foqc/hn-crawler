@@ -24,6 +24,13 @@ export class HackerNewsScraper implements EntriesSource {
   }
 
   async fetchEntries(): Promise<Entry[]> {
+    const entries = parseEntries(await this.fetchPage());
+    this.assertParsed(entries);
+    return entries;
+  }
+
+  /** Downloads the page; any failure, including while reading the body, is SourceUnavailable. */
+  private async fetchPage(): Promise<string> {
     let response: Response;
     try {
       response = await this.fetchFn(this.url, { signal: AbortSignal.timeout(this.timeoutMs) });
@@ -35,9 +42,13 @@ export class HackerNewsScraper implements EntriesSource {
       throw new SourceUnavailableError(`${this.url} responded with HTTP ${response.status}`);
     }
 
-    const entries = parseEntries(await response.text());
-    this.assertParsed(entries);
-    return entries;
+    try {
+      return await response.text();
+    } catch (error) {
+      throw new SourceUnavailableError(`Could not read the response from ${this.url}`, {
+        cause: error,
+      });
+    }
   }
 
   /**

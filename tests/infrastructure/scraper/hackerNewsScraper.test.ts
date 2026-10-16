@@ -59,6 +59,21 @@ describe('HackerNewsScraper', () => {
     expect(error).toHaveProperty('message', expect.stringMatching(message));
   });
 
+  it('wraps failures while reading the body in SourceUnavailableError keeping the cause', async () => {
+    const cause = new TypeError('terminated');
+    const response = new Response(HTML);
+    jest.spyOn(response, 'text').mockRejectedValue(cause);
+    const fetchFn = jest
+      .fn<Promise<Response>, Parameters<typeof fetch>>()
+      .mockResolvedValue(response);
+
+    await expect(new HackerNewsScraper(fetchFn).fetchEntries()).rejects.toMatchObject({
+      name: 'SourceUnavailableError',
+      message: `Could not read the response from ${HACKER_NEWS_URL}`,
+      cause,
+    });
+  });
+
   it('wraps network failures in SourceUnavailableError keeping the cause', async () => {
     const cause = new TypeError('fetch failed');
     const fetchFn = jest.fn<Promise<Response>, Parameters<typeof fetch>>().mockRejectedValue(cause);
