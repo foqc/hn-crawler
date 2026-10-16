@@ -1,10 +1,10 @@
 import { DatabaseSync } from 'node:sqlite';
-import { TtlCache } from './cache/ttlCache';
+import { EntriesService } from './application/entriesService';
 import { loadConfig } from './config';
 import { buildApp } from './http/app';
-import { HackerNewsScraper } from './scraper/hackerNewsScraper';
-import { EntriesService } from './service/entriesService';
-import { SqliteUsageRepository } from './usage/sqliteUsageRepository';
+import { TtlCache } from './infrastructure/cache/ttlCache';
+import { HackerNewsScraper } from './infrastructure/scraper/hackerNewsScraper';
+import { SqliteUsageRepository } from './infrastructure/sqlite/sqliteUsageRepository';
 
 // Composition root: the only place where concrete implementations are created and wired.
 const main = async (): Promise<void> => {

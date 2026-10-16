@@ -12,18 +12,17 @@ typescript-eslint don't support 7 yet.
 
 ```
 src/
-  domain/    pure types and functions: Entry, countWords, filters
-  scraper/   HTML parsing (cheerio) and fetching
-  cache/     in-memory TTL cache
-  usage/     UsageRepository interface + SQLite implementation
-  service/   EntriesService: orchestrates cache, scraping, filtering and usage logging
-  http/      Fastify app (routes + schemas)
-  config.ts  environment configuration
-  server.ts  composition root: the only place that instantiates and wires implementations
-tests/       mirrors src/; fixtures in tests/fixtures/
+  domain/          business concepts and rules: pure types and functions
+  application/     use cases (EntriesService) and the ports they need (ports.ts)
+  infrastructure/  port implementations: scraper/, cache/, sqlite/
+  http/            Fastify app (routes + schemas)
+  config.ts        environment configuration
+  server.ts        composition root: the only place that instantiates and wires implementations
+tests/             mirrors src/; fixtures in tests/fixtures/
 ```
 
-Dependencies point inwards (`http -> service -> scraper/cache/usage -> domain`).
+Dependencies point inwards: `http` and `infrastructure` -> `application` -> `domain`. Layers are a
+guide, not dogma: no interface or abstraction without a concrete use.
 
 ## Design choices
 

@@ -1,11 +1,7 @@
 import type { DatabaseSync, SQLOutputValue } from 'node:sqlite';
-import { FILTER_NAMES } from '../domain/filters';
-import type {
-  AppliedFilter,
-  StoredUsageRecord,
-  UsageRecord,
-  UsageRepository,
-} from './usageRepository';
+import type { UsageRepository } from '../../application/ports';
+import { FILTER_NAMES } from '../../domain/filters';
+import type { AppliedFilter, StoredUsageRecord, UsageRecord } from '../../domain/usage';
 
 const CREATE_TABLE = `
   CREATE TABLE IF NOT EXISTS usage_logs (

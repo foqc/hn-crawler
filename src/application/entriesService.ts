@@ -1,17 +1,7 @@
-import type { Clock, TtlCache } from '../cache/ttlCache';
 import type { Entry } from '../domain/entry';
 import { applyFilter, type FilterName } from '../domain/filters';
-import type {
-  AppliedFilter,
-  StoredUsageRecord,
-  UsageRecord,
-  UsageRepository,
-} from '../usage/usageRepository';
-
-/** Where entries come from; HackerNewsScraper is the production implementation. */
-export interface EntriesSource {
-  fetchEntries(): Promise<Entry[]>;
-}
+import type { AppliedFilter, StoredUsageRecord, UsageRecord } from '../domain/usage';
+import type { Cache, Clock, EntriesSource, UsageRepository } from './ports';
 
 export interface EntriesResult {
   readonly filter: AppliedFilter;
@@ -22,7 +12,7 @@ export interface EntriesResult {
 export class EntriesService {
   constructor(
     private readonly source: EntriesSource,
-    private readonly cache: TtlCache<readonly Entry[]>,
+    private readonly cache: Cache<readonly Entry[]>,
     private readonly usage: UsageRepository,
     private readonly now: Clock,
   ) {}

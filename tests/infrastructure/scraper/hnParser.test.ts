@@ -1,8 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { MAX_ENTRIES, parseCount, parseEntries } from '../../src/scraper/hnParser';
+import {
+  MAX_ENTRIES,
+  parseCount,
+  parseEntries,
+} from '../../../src/infrastructure/scraper/hnParser';
 
-const fixture = readFileSync(join(__dirname, '../fixtures/hn-front-page.html'), 'utf8');
+const fixture = readFileSync(join(__dirname, '../../fixtures/hn-front-page.html'), 'utf8');
 
 /** Builds the two rows HN renders per entry; omitting `subtext` simulates a job post. */
 const entryRows = (rank: number, title: string, subtext = ''): string => `

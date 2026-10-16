@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio';
-import type { Entry } from '../domain/entry';
+import type { Entry } from '../../domain/entry';
 
 export const MAX_ENTRIES = 30;
 

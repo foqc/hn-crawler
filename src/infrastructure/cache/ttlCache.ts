@@ -1,17 +1,11 @@
-/** Returns the current time in milliseconds; injected so tests control time. */
-export type Clock = () => number;
-
-export interface CacheResult<T> {
-  readonly value: T;
-  readonly hit: boolean;
-}
+import type { Cache, CacheResult, Clock } from '../../application/ports';
 
 /**
  * Caches a single value for `ttlMs`. The in-flight promise is what gets cached, so concurrent
  * callers share one load instead of all hitting the source when the entry expires (cache stampede).
  * Failed loads are not cached: the next call retries.
  */
-export class TtlCache<T> {
+export class TtlCache<T> implements Cache<T> {
   private entry?: { readonly promise: Promise<T>; readonly expiresAt: number };
 
   constructor(

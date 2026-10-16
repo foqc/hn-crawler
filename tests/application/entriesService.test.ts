@@ -1,7 +1,8 @@
-import { TtlCache } from '../../src/cache/ttlCache';
+import { EntriesService } from '../../src/application/entriesService';
+import type { UsageRepository } from '../../src/application/ports';
 import type { Entry } from '../../src/domain/entry';
-import { EntriesService } from '../../src/service/entriesService';
-import type { UsageRecord, UsageRepository } from '../../src/usage/usageRepository';
+import type { UsageRecord } from '../../src/domain/usage';
+import { TtlCache } from '../../src/infrastructure/cache/ttlCache';
 import { anEntry } from '../support/entries';
 
 const ENTRIES: Entry[] = [

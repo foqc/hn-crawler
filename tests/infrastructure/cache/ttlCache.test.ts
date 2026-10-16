@@ -1,4 +1,4 @@
-import { TtlCache } from '../../src/cache/ttlCache';
+import { TtlCache } from '../../../src/infrastructure/cache/ttlCache';
 
 const TTL_MS = 1_000;
 

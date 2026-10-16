@@ -2,7 +2,7 @@ import {
   HACKER_NEWS_URL,
   HackerNewsScraper,
   ScrapeError,
-} from '../../src/scraper/hackerNewsScraper';
+} from '../../../src/infrastructure/scraper/hackerNewsScraper';
 
 const HTML = `<table>
   <tr class="athing"><td><span class="rank">1.</span></td>

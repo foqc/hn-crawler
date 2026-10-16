@@ -1,4 +1,4 @@
-import type { Entry } from '../domain/entry';
+import type { Entry } from '../../domain/entry';
 import { parseEntries } from './hnParser';
 
 export const HACKER_NEWS_URL = 'https://news.ycombinator.com/';

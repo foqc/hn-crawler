@@ -1,7 +1,7 @@
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import type { FilterName } from '../domain/filters';
-import { ScrapeError } from '../scraper/hackerNewsScraper';
-import type { EntriesService } from '../service/entriesService';
+import { ScrapeError } from '../infrastructure/scraper/hackerNewsScraper';
+import type { EntriesService } from '../application/entriesService';
 import { entriesRouteSchema, usageRouteSchema } from './schemas';
 
 /** Builds the HTTP app without listening, so tests can drive it with `app.inject()`. */

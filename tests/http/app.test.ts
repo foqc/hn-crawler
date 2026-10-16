@@ -1,11 +1,11 @@
 import { DatabaseSync } from 'node:sqlite';
 import type { FastifyInstance } from 'fastify';
-import { TtlCache } from '../../src/cache/ttlCache';
+import { EntriesService } from '../../src/application/entriesService';
 import type { Entry } from '../../src/domain/entry';
 import { buildApp } from '../../src/http/app';
-import { ScrapeError } from '../../src/scraper/hackerNewsScraper';
-import { EntriesService } from '../../src/service/entriesService';
-import { SqliteUsageRepository } from '../../src/usage/sqliteUsageRepository';
+import { TtlCache } from '../../src/infrastructure/cache/ttlCache';
+import { ScrapeError } from '../../src/infrastructure/scraper/hackerNewsScraper';
+import { SqliteUsageRepository } from '../../src/infrastructure/sqlite/sqliteUsageRepository';
 import { anEntry } from '../support/entries';
 
 const ENTRIES: Entry[] = [

@@ -1,6 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
-import { SqliteUsageRepository } from '../../src/usage/sqliteUsageRepository';
-import type { UsageRecord } from '../../src/usage/usageRepository';
+import type { UsageRecord } from '../../../src/domain/usage';
+import { SqliteUsageRepository } from '../../../src/infrastructure/sqlite/sqliteUsageRepository';
 
 const aRecord = (overrides: Partial<UsageRecord> = {}): UsageRecord => ({
   requestedAt: '2026-10-16T12:00:00.000Z',
