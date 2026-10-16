@@ -26,7 +26,19 @@ export class EntriesService {
 
   async getEntries(filterName?: FilterName): Promise<EntriesResult> {
     const filter = filterName ?? 'none';
-    const { entries } = await this.tracked(filter, () => this.loadEntries(filterName));
+    const startedAt = this.now();
+
+    let loaded: LoadedEntries;
+    try {
+      loaded = await this.loadEntries();
+    } catch (error) {
+      await this.recordFailure(filter, startedAt, error);
+      throw error;
+    }
+
+    // Outside the try block: if saving the usage fails, it must not be recorded again as a failure.
+    const entries = filterName ? applyFilter(loaded.entries, filterName) : loaded.entries;
+    await this.recordSuccess(filter, startedAt, entries.length, loaded.cacheHit);
     return { filter, entries };
   }
 
@@ -34,14 +46,8 @@ export class EntriesService {
     return this.usage.list(limit);
   }
 
-  /** Reads entries through the cache and applies the filter, if any. */
-  private async loadEntries(filterName?: FilterName): Promise<LoadedEntries> {
-    const { entries, cacheHit } = await this.fetchWithCache();
-    return { entries: filterName ? applyFilter(entries, filterName) : entries, cacheHit };
-  }
-
   /** Cache-aside: serves the cached entries if present, otherwise scrapes and caches them. */
-  private async fetchWithCache(): Promise<LoadedEntries> {
+  private async loadEntries(): Promise<LoadedEntries> {
     const cached = await this.cache.get();
     if (cached !== undefined) {
       return { entries: cached, cacheHit: true };
@@ -52,31 +58,27 @@ export class EntriesService {
     return { entries, cacheHit: false };
   }
 
-  /** Runs an operation and records its usage exactly once, whether it succeeds or fails. */
-  private async tracked(
+  private recordSuccess(
     filter: AppliedFilter,
-    operation: () => Promise<LoadedEntries>,
-  ): Promise<LoadedEntries> {
-    const startedAt = this.now();
-
-    const result = await operation().catch(async (error: unknown) => {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      await this.saveUsage(filter, startedAt, {
-        status: 'error',
-        resultCount: 0,
-        cacheHit: false,
-        errorMessage,
-      });
-      throw error;
-    });
-
-    await this.saveUsage(filter, startedAt, {
+    startedAt: number,
+    resultCount: number,
+    cacheHit: boolean,
+  ): Promise<void> {
+    return this.saveUsage(filter, startedAt, {
       status: 'success',
-      resultCount: result.entries.length,
-      cacheHit: result.cacheHit,
+      resultCount,
+      cacheHit,
       errorMessage: null,
     });
-    return result;
+  }
+
+  private recordFailure(filter: AppliedFilter, startedAt: number, error: unknown): Promise<void> {
+    return this.saveUsage(filter, startedAt, {
+      status: 'error',
+      resultCount: 0,
+      cacheHit: false,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
   }
 
   private saveUsage(
