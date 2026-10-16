@@ -17,7 +17,8 @@ src/
   infrastructure/  port implementations: scraper/, cache/, sqlite/
   http/            Fastify app (routes + schemas)
   config.ts        environment configuration
-  server.ts        composition root: the only place that instantiates and wires implementations
+  container.ts     composition root: the only place that instantiates and wires implementations
+  server.ts        HTTP entrypoint: config -> container -> Fastify, plus process lifecycle
 tests/             mirrors src/; fixtures in tests/fixtures/
 ```
 
@@ -27,9 +28,9 @@ guide, not dogma: no interface or abstraction without a concrete use.
 ## Design choices
 
 - Functional core, OO shell: the domain is pure functions over readonly data; classes only for
-  components with dependencies or state, injected through the constructor and wired in the server
-  entrypoint only.
-- Filters are data (`{ predicate, sortBy }`) applied by one generic function — a new filter is one line.
+  components with dependencies or state, injected through the constructor and wired in
+  `container.ts` only.
+- Filters are data (`{ matches, sortBy }`) applied by one generic function — a new filter is one line.
 - Tests never hit the network: HTML fixture, injected `fetch` and clock, SQLite `:memory:`. Each
   behaviour change ships with its tests.
 
