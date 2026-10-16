@@ -1,11 +1,12 @@
 # AGENTS.md
 
-Hacker News crawler (coding exercise): scrapes the front page, exposes filters through a Fastify API
-and logs usage to SQLite. Business rules and assumptions live in the
+Hacker News crawler (coding exercise): scrapes the front page, exposes filters through a Fastify API and a
+CLI, and logs usage to SQLite. Business rules and assumptions live in the
 [README](README.md#requirements--assumptions) and are specified by the tests — change both together.
 
-Node >= 22.13 (`node:sqlite`). `npm test` and `npm run lint` must pass; Husky enforces formatting,
-lint and Conventional Commits, so never use `--no-verify`. Keep TypeScript on 6.x: ts-jest and
+Node >= 22.13 (`node:sqlite`). `npm run typecheck`, `npm run lint` and `npm test` must pass (Jest
+only transpiles, so types are checked by `typecheck`); Husky enforces formatting, lint and
+Conventional Commits, so never use `--no-verify`. Keep TypeScript on 6.x: ts-jest and
 typescript-eslint don't support 7 yet.
 
 ## Architecture
@@ -16,9 +17,11 @@ src/
   application/     use cases (EntriesService, UsageService) and the ports they need (ports.ts)
   infrastructure/  port implementations: scraper/, cache/, sqlite/
   http/            Fastify app; routes/ holds one plugin per resource (route + schema)
+  cli/             command line program: argument parsing and output formatting
   config.ts        environment configuration
   container.ts     composition root: the only place that instantiates and wires implementations
   server.ts        HTTP entrypoint: config -> container -> Fastify, plus process lifecycle
+  cli.ts           CLI entrypoint: config -> container -> CLI program
 tests/             mirrors src/; fixtures in tests/fixtures/
 ```
 
