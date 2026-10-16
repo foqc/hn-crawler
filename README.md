@@ -214,7 +214,7 @@ Known trade-offs, accepted for the scope of this exercise:
 ## Testing
 
 ```bash
-npm test                # 117 tests, no network access
+npm test                # full suite, no network access
 npm run test:coverage   # coverage report in coverage/
 ```
 
