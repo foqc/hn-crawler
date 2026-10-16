@@ -23,15 +23,13 @@ export const createContainer = (config: Config): Container => {
   const db = new DatabaseSync(config.databasePath);
   migrate(db);
 
-  const usageRepository = new SqliteUsageRepository(db);
-
+  const usageService = new UsageService(new SqliteUsageRepository(db), now);
   const entriesService = new EntriesService(
     new HackerNewsScraper(fetch),
     new TtlCache(config.cacheTtlMs, now),
-    usageRepository,
+    usageService,
     now,
   );
-  const usageService = new UsageService(usageRepository);
 
   return { entriesService, usageService, close: () => db.close() };
 };

@@ -1,5 +1,6 @@
 import { EntriesService } from '../../src/application/entriesService';
 import type { UsageRepository } from '../../src/application/ports';
+import { UsageService } from '../../src/application/usageService';
 import type { Entry } from '../../src/domain/entry';
 import type { UsageRecord } from '../../src/domain/usage';
 import { TtlCache } from '../../src/infrastructure/cache/ttlCache';
@@ -26,7 +27,12 @@ const setup = (fetchEntries: () => Promise<Entry[]> = () => Promise.resolve(ENTR
       return fetchEntries();
     }),
   };
-  const service = new EntriesService(source, new TtlCache(60_000, now), usage, now);
+  const service = new EntriesService(
+    source,
+    new TtlCache(60_000, now),
+    new UsageService(usage, now),
+    now,
+  );
   return { service, source, saved };
 };
 
@@ -105,7 +111,7 @@ describe('EntriesService', () => {
     const service = new EntriesService(
       { fetchEntries: () => Promise.resolve(ENTRIES) },
       new TtlCache(60_000, Date.now),
-      usage,
+      new UsageService(usage, Date.now),
       Date.now,
     );
 

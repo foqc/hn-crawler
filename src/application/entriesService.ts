@@ -1,7 +1,8 @@
 import type { Entry } from '../domain/entry';
 import { applyFilter, type FilterName } from '../domain/filters';
-import type { AppliedFilter, UsageRecord } from '../domain/usage';
-import type { Cache, Clock, EntriesSource, UsageRepository } from './ports';
+import type { AppliedFilter } from '../domain/usage';
+import type { Cache, Clock, EntriesSource } from './ports';
+import type { UsageService } from './usageService';
 
 export interface EntriesResult {
   readonly filter: AppliedFilter;
@@ -13,14 +14,12 @@ interface LoadedEntries {
   readonly cacheHit: boolean;
 }
 
-type UsageOutcome = Pick<UsageRecord, 'status' | 'resultCount' | 'cacheHit' | 'errorMessage'>;
-
 /** Gets the front page entries, optionally filtered, and records the usage of every request. */
 export class EntriesService {
   constructor(
     private readonly source: EntriesSource,
     private readonly cache: Cache<readonly Entry[]>,
-    private readonly usage: UsageRepository,
+    private readonly usageService: UsageService,
     private readonly now: Clock,
   ) {}
 
@@ -32,7 +31,7 @@ export class EntriesService {
     try {
       loaded = await this.loadEntries();
     } catch (error) {
-      await this.saveUsage(filter, startedAt, {
+      await this.usageService.record(filter, startedAt, {
         status: 'error',
         resultCount: 0,
         cacheHit: false,
@@ -43,7 +42,7 @@ export class EntriesService {
 
     // Outside the try block: if saving the usage fails, it must not be recorded again as a failure.
     const entries = filterName ? applyFilter(loaded.entries, filterName) : loaded.entries;
-    await this.saveUsage(filter, startedAt, {
+    await this.usageService.record(filter, startedAt, {
       status: 'success',
       resultCount: entries.length,
       cacheHit: loaded.cacheHit,
@@ -62,18 +61,5 @@ export class EntriesService {
     const entries = await this.source.fetchEntries();
     await this.cache.set(entries);
     return { entries, cacheHit: false };
-  }
-
-  private saveUsage(
-    filter: AppliedFilter,
-    startedAt: number,
-    outcome: UsageOutcome,
-  ): Promise<void> {
-    return this.usage.save({
-      requestedAt: new Date(startedAt).toISOString(),
-      filter,
-      durationMs: this.now() - startedAt,
-      ...outcome,
-    });
   }
 }
