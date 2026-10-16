@@ -1,7 +1,7 @@
 # hn-crawler
 
 Web crawler that scrapes the first 30 entries from [Hacker News](https://news.ycombinator.com/)
-and exposes filters over them, storing usage data for every request.
+and exposes filters over them, recording how each request to the crawler went.
 
 ## Requirements & assumptions
 
@@ -16,7 +16,9 @@ For each of the first 30 entries the crawler extracts **rank, title, points and 
 digit are counted, so standalone symbols are excluded. `"This is - a self-explained example"` has
 5 words (`-` is ignored; `self-explained` is one word).
 
-**Usage data**: every request stores at least its timestamp and the applied filter.
+**Usage data**: each request that reaches the crawler (API or CLI) stores at least its timestamp
+and the applied filter, plus status, result count, duration, cache hit and error message. See
+[Limitations](#limitations) for what is not recorded.
 
 Assumptions where the statement is not explicit (each one is covered by tests):
 
@@ -53,12 +55,26 @@ curl 'http://127.0.0.1:3000/entries?filter=long-titles'
 curl 'http://127.0.0.1:3000/usage?limit=5'
 ```
 
-An unknown filter returns `400`; if Hacker News cannot be reached the API returns `502`.
+Example response (`GET /entries?filter=short-titles`, truncated):
 
-### CLI
+```json
+{
+  "filter": "short-titles",
+  "count": 11,
+  "entries": [
+    { "rank": 1, "title": "Tesla Roadster", "points": 909, "comments": 1636 },
+    { "rank": 2, "title": "Claude reveals ECDSA curve origins", "points": 415, "comments": 173 }
+  ]
+}
+```
 
-The same use cases are available from the command line (it uses the same configuration and
-usage database as the API):
+An unknown filter returns `400`. If Hacker News cannot be reached, answers with an error, or
+returns a page that cannot be parsed (e.g. after a layout change), the API returns `502`.
+
+### CLI (optional extra)
+
+Not part of the requirements: it demonstrates that the use cases are independent of HTTP. It runs
+the same services with the same configuration and usage database as the API:
 
 ```bash
 npm run -s cli -- entries                        # the first 30 entries
@@ -111,8 +127,9 @@ routes/entries.ts -> EntriesService -> cache hit?  yes -> cached entries
   (e.g. SQLite → PostgreSQL, memory → Redis) in `container.ts` alone.
 - **Functional core, OO shell:** the domain is pure functions over readonly data; classes are used
   only for components with dependencies or state, injected through the constructor.
-- **Errors:** the scraper raises `SourceUnavailableError`, which the HTTP layer maps to `502`
-  without knowing about Hacker News.
+- **Errors:** the scraper raises `SourceUnavailableError` for any failure to get usable data
+  (network, HTTP status, body download, unparseable page), which the HTTP layer maps to `502`
+  without knowing about Hacker News. Failed scrapes are never cached.
 
 ## Design decisions
 
@@ -151,26 +168,45 @@ succeeds or fails. `UsageService` owns the usage log: it builds and saves each r
 the queries of `GET /usage`.
 
 - **Why the service:** storing usage is a business requirement, so it must hold for every
-  entrypoint (the API today, a CLI later), and a CLI never goes through Fastify's hooks. The
+  entrypoint (API and CLI), and a CLI never goes through Fastify's hooks. The
   most useful fields describe the crawler's behaviour — cache hit, result count, source errors —
   and only the service knows them.
 - **Trade-off:** requests rejected by validation (`400`, e.g. an unknown filter) are not recorded,
   because Fastify rejects them before the service runs. HTTP-level data (IP, user agent, status
   code) is not recorded either.
+- **Best-effort:** if the usage log cannot be written, the error is reported (stderr) and the
+  request still gets its normal answer; a logging failure never turns a `200` into a `500` or hides
+  the original error of a failed request.
 - **Possible extension:** a lightweight Fastify `onResponse` hook could log that HTTP-level
   information as a complement — user interaction at the edge, crawler behaviour in the service.
 
 ### Cache-aside with an in-memory TTL
 
 The service asks the cache first; on a miss it scrapes Hacker News and stores the result for
-`CACHE_TTL_MS`. The `Cache` interface is just `get()` / `set(value)`, so swapping the in-memory
-`TtlCache` for Redis (`GET` / `SET ... EX`) means one new class and one line in `container.ts`.
+`CACHE_TTL_MS`. The service depends on a two-method `Cache` interface (`get()` / `set(value)`)
+instead of `TtlCache` itself, which keeps the application layer free of infrastructure imports. A
+shared cache such as Redis (`GET` / `SET ... EX`) would plug in the same way if the API ever ran as
+several instances; it is not needed today.
 
 - **Trade-off:** concurrent requests that miss at the same moment each scrape once (no cache
   stampede protection). With one front page and a short TTL, that costs a few extra requests at
   worst, and explicit code was preferred.
-- In-memory means the cache is per process and is lost on restart; failed scrapes are never
-  cached.
+- In-memory means the cache is per process and is lost on restart.
+
+## Limitations
+
+Known trade-offs, accepted for the scope of this exercise:
+
+- **Not every request is logged:** requests rejected by validation (`400`) and `GET /usage` itself
+  are not recorded, and logging is best-effort (a failed write is reported, not retried).
+- **Unbounded usage table:** `usage_logs` grows forever; a real deployment would add retention or
+  rotation.
+- **No cache stampede protection:** concurrent misses each scrape Hacker News once.
+- **Single machine:** the cache lives in memory and SQLite is a local file. API and CLI can share
+  the database (writes wait up to 5 s for a lock), but scaling out would need a shared cache and
+  database.
+- **Depends on Hacker News markup:** a layout change is detected and answered with `502`, but the
+  parser must be updated to recover.
 
 ## Testing
 
@@ -178,6 +214,22 @@ Tests never hit the network. The parser runs against
 [`tests/fixtures/hn-front-page.html`](tests/fixtures/hn-front-page.html), a snapshot of the Hacker
 News front page captured on 2026-10-16; edge cases the snapshot lacks are covered with small inline
 HTML samples.
+
+## How I used AI
+
+The assignment allows AI, so I worked with Claude Code as a pair programmer:
+
+- **I decided** the stack (TypeScript, Jest, Fastify, `node:sqlite`, cheerio), the assumptions
+  (ordering, tie-breaking, word count) and the architecture. Several designs changed after my
+  review: an explicit cache-aside instead of a read-through cache, a plain try/catch instead of a
+  tracking wrapper, `UsageService` as the single owner of the usage log, and one route plugin per
+  resource.
+- **I delegated** drafting code, tests, documentation and commit messages once a design was agreed.
+- **I reviewed** every change in small batches, and ran an independent AI review whose findings
+  (failure handling around the usage log and the scraper) were fixed with tests.
+- **Guardrails** kept quality independent of who wrote a line: [`AGENTS.md`](AGENTS.md), a
+  [pre-commit review checklist](.claude/skills/pre-commit-review/SKILL.md), Git hooks, CI, and a
+  test suite that never touches the network.
 
 ## Development workflow
 
