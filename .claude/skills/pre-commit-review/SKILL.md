@@ -8,7 +8,7 @@ description: Review staged changes against this project's design and quality sta
 Checks the things linters cannot: design, repetition, consistency and test quality. Formatting and
 lint rules are already enforced by the Git hooks, so do not spend time on them.
 
-The checklist maps to the criteria the exercise is evaluated on. The conventions themselves live in
+The checklist maps to the project's quality goals. The conventions themselves live in
 `AGENTS.md`; this skill is the procedure to verify them.
 
 ## Procedure

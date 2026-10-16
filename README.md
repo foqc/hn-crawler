@@ -20,7 +20,7 @@ digit are counted, so standalone symbols are excluded. `"This is - a self-explai
 and the applied filter, plus status, result count, duration, cache hit and error message. See
 [Limitations](#limitations) for what is not recorded.
 
-Assumptions where the statement is not explicit (each one is covered by tests):
+Assumptions where the requirements are not explicit (each one is covered by tests):
 
 - Ordering is **descending**; ties are broken by rank ascending (original page order).
 - Entries without points or comments (job posts, `discuss`) count as `0`.
@@ -133,6 +133,9 @@ routes/entries.ts -> EntriesService -> cache hit?  yes -> cached entries
 
 ## Design decisions
 
+The main decisions are summarised below; the full analysis and decision records are in
+[`docs/design-process.md`](docs/design-process.md).
+
 ### Fastify instead of Express
 
 - JSON Schema validation and serialization are built in: an unknown filter is rejected with `400`
@@ -195,7 +198,7 @@ several instances; it is not needed today.
 
 ## Limitations
 
-Known trade-offs, accepted for the scope of this exercise:
+Known trade-offs, accepted for the current scope:
 
 - **Not every request is logged:** requests rejected by validation (`400`) and `GET /usage` itself
   are not recorded, and logging is best-effort (a failed write is reported, not retried).
@@ -225,7 +228,15 @@ HTML samples.
 
 ## How I used AI
 
-The assignment allows AI, so I worked with Claude Code as a pair programmer:
+I worked with Claude Code as a pair programmer.
+[`docs/design-process.md`](docs/design-process.md) tells the story in order: the analysis, the
+plan of commits and tests I gave the AI before any code existed, how that plan was used and
+changed, and each decision as a short ADR (including the ones I later changed). It is there to
+show the reasoning behind the code, not just the result.
+
+The assistant wrote most of the code, but the direction was mine: most ideas and changes started
+as my proposals or questions, I asked the assistant to compare options when I was unsure, and I
+researched and cross-checked its answers on my own before deciding. In short:
 
 - **I decided** the stack (TypeScript, Jest, Fastify, `node:sqlite`, cheerio), the assumptions
   (ordering, tie-breaking, word count) and the architecture. Several designs changed after my

@@ -2,7 +2,7 @@ import { countWords } from '../../src/domain/wordCount';
 
 describe('countWords', () => {
   test.each([
-    ['This is - a self-explained example', 5, 'the example from the statement'],
+    ['This is - a self-explained example', 5, 'the example from the requirements'],
     ['', 0, 'an empty string'],
     ['   ', 0, 'only whitespace'],
     ['Hello', 1, 'a single word'],

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Hacker News crawler (coding exercise): scrapes the front page, exposes filters through a Fastify API and a
+Hacker News crawler: scrapes the front page, exposes filters through a Fastify API and a
 CLI, and logs usage to SQLite. Business rules and assumptions live in the
 [README](README.md#requirements--assumptions) and are specified by the tests — change both together.
 
