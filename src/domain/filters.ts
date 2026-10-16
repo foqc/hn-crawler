@@ -11,7 +11,7 @@ interface EntryFilter {
 }
 
 // Filters are data: adding a new one only requires a new entry in this map.
-export const FILTERS = {
+const FILTERS = {
   'long-titles': {
     matches: (entry) => countWords(entry.title) > SHORT_TITLE_MAX_WORDS,
     sortBy: 'comments',
