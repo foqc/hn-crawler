@@ -55,6 +55,21 @@ curl 'http://127.0.0.1:3000/usage?limit=5'
 
 An unknown filter returns `400`; if Hacker News cannot be reached the API returns `502`.
 
+### CLI
+
+The same use cases are available from the command line (it uses the same configuration and
+usage database as the API):
+
+```bash
+npm run -s cli -- entries                        # the first 30 entries
+npm run -s cli -- entries --filter long-titles   # filtered and ordered
+npm run -s cli -- usage --limit 10               # usage log, most recent first
+npm run -s cli -- help
+```
+
+Exit codes: `0` success, `1` the command failed (e.g. Hacker News unreachable), `2` invalid
+arguments. Every run is a new process, so the in-memory cache never carries over between runs.
+
 ### Configuration
 
 | Variable        | Default     | Description                                     |
@@ -75,8 +90,10 @@ src/
   application/     services (EntriesService, UsageService) and the interfaces they need (ports.ts)
   infrastructure/  implementations of those interfaces: scraper/ (fetch + cheerio), cache/, sqlite/
   http/            Fastify app; routes/ has one plugin per resource (route + JSON schema)
+  cli/             command line program: parses arguments and prints results
   container.ts     the only place where implementations are created and wired together
-  server.ts        entrypoint: config -> container -> Fastify, plus graceful shutdown
+  server.ts        API entrypoint: config -> container -> Fastify, plus graceful shutdown
+  cli.ts           CLI entrypoint: config -> container -> CLI program
 ```
 
 A request to `GET /entries?filter=long-titles` flows like this:
