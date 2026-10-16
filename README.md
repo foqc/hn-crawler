@@ -37,6 +37,13 @@ npm install
 npm test
 ```
 
+## Testing
+
+Tests never hit the network. The parser runs against
+[`tests/fixtures/hn-front-page.html`](tests/fixtures/hn-front-page.html), a snapshot of the Hacker
+News front page captured on 2026-10-16; edge cases the snapshot lacks are covered with small inline
+HTML samples.
+
 ## Development workflow
 
 - `npm run lint` / `npm run format` — ESLint and Prettier.
