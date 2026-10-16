@@ -38,6 +38,27 @@ describe('HackerNewsScraper', () => {
     );
   });
 
+  it.each([
+    ['the page has no entries', '<html><body>Maintenance</body></html>', /No entries found/],
+    [
+      'an entry has no rank',
+      HTML.replace('<span class="rank">1.</span>', ''),
+      /Could not parse an entry/,
+    ],
+    [
+      'an entry has no title',
+      HTML.replace('<a href="#">Hello world</a>', ''),
+      /Could not parse an entry/,
+    ],
+  ])('throws SourceUnavailableError when %s', async (_case, html, message) => {
+    const scraper = new HackerNewsScraper(fetchReturning(html));
+
+    const error = await scraper.fetchEntries().catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(SourceUnavailableError);
+    expect(error).toHaveProperty('message', expect.stringMatching(message));
+  });
+
   it('wraps network failures in SourceUnavailableError keeping the cause', async () => {
     const cause = new TypeError('fetch failed');
     const fetchFn = jest.fn<Promise<Response>, Parameters<typeof fetch>>().mockRejectedValue(cause);
