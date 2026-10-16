@@ -1,10 +1,9 @@
-import { DatabaseSync } from 'node:sqlite';
 import { EntriesService } from './application/entriesService';
 import { UsageService } from './application/usageService';
 import type { Config } from './config';
 import { TtlCache } from './infrastructure/cache/ttlCache';
 import { HackerNewsScraper } from './infrastructure/scraper/hackerNewsScraper';
-import { migrate } from './infrastructure/sqlite/schema';
+import { openDatabase } from './infrastructure/sqlite/database';
 import { SqliteUsageRepository } from './infrastructure/sqlite/sqliteUsageRepository';
 
 export interface Container {
@@ -20,8 +19,7 @@ export interface Container {
  */
 export const createContainer = (config: Config): Container => {
   const now = (): number => Date.now();
-  const db = new DatabaseSync(config.databasePath);
-  migrate(db);
+  const db = openDatabase(config.databasePath);
 
   const usageService = new UsageService(new SqliteUsageRepository(db), now, (error) =>
     console.error('Could not record usage:', error),
