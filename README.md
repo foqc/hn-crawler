@@ -5,7 +5,28 @@ and exposes filters over them, storing usage data for every request.
 
 > Work in progress — full documentation and design decisions will be added as the project evolves.
 
-## Requirements
+## Requirements & assumptions
+
+For each of the first 30 entries the crawler extracts **rank, title, points and number of comments**.
+
+| Filter         | Keeps titles with | Ordered by |
+| -------------- | ----------------- | ---------- |
+| `long-titles`  | more than 5 words | comments   |
+| `short-titles` | 5 words or fewer  | points     |
+
+**Word count**: the title is split on whitespace and only tokens containing at least one letter or
+digit are counted, so standalone symbols are excluded. `"This is - a self-explained example"` has
+5 words (`-` is ignored; `self-explained` is one word).
+
+**Usage data**: every request stores at least its timestamp and the applied filter.
+
+Assumptions where the statement is not explicit (each one is covered by tests):
+
+- Ordering is **descending**; ties are broken by rank ascending (original page order).
+- Entries without points or comments (job posts, `discuss`) count as `0`.
+- Tokens such as `(2026)` count as words because they contain alphanumeric characters.
+
+## Prerequisites
 
 - Node.js >= 22.13 (see `.nvmrc`)
 

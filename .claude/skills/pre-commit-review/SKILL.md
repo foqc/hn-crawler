@@ -27,17 +27,17 @@ Do not commit if any **blocking** item fails. Fix it first or ask the user.
 
 ### Correctness (blocking)
 
-- [ ] Behaviour matches the domain rules and assumptions in `AGENTS.md` (word count, `> 5` vs `<= 5`,
-      descending order, tie-break by rank, missing values as `0`).
-- [ ] Edge cases are handled: empty input, job posts, `discuss`, singular `comment`/`point`,
-      `&nbsp;`, HTML entities in titles.
-- [ ] Errors at boundaries are thrown or mapped (e.g. 400 / 502), never swallowed.
+- [ ] Behaviour matches the business rules and assumptions documented in the README and specified by
+      the tests. If a rule changes, README and tests change in the same commit.
+- [ ] Edge cases of the changed code are handled (empty input, missing or malformed data).
+- [ ] Errors at boundaries are thrown or mapped to meaningful responses, never swallowed.
 
 ### Tests (blocking)
 
 - [ ] Every new or changed behaviour has tests in the same commit.
 - [ ] Tests do not touch the network or the real clock.
-- [ ] Boundary values are tested (exactly 5 words; ties).
+- [ ] Boundary values and ties are tested.
+- [ ] Every new documented assumption has a test that proves it.
 - [ ] Repetitive cases use `test.each`; test names describe behaviour.
 
 ### Repetition

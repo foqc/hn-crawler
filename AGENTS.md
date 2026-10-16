@@ -4,23 +4,12 @@ Guidance for AI coding agents (and humans) working in this repository.
 
 ## Project
 
-A Hacker News crawler written as a coding exercise. It scrapes the first 30 entries of
-https://news.ycombinator.com/ (rank, title, points, comments), exposes filters over them through a
-Fastify HTTP API, and stores usage data for every request.
+A Hacker News crawler written as a coding exercise: it scrapes the front page, exposes filters
+through an HTTP API and stores usage data for every request.
 
-### Domain rules (from the exercise statement)
-
-- **Word count**: split the title on whitespace and count only tokens containing at least one letter
-  or digit (`/[\p{L}\p{N}]/u`). `"This is - a self-explained example"` has 5 words.
-- **`long-titles` filter**: titles with **more than 5** words, ordered by comments.
-- **`short-titles` filter**: titles with **5 or fewer** words, ordered by points.
-- **Usage log**: every request stores at least the timestamp and the applied filter.
-
-### Assumptions (not stated explicitly — keep them documented and tested)
-
-- Ordering is **descending**; ties are broken by `rank` ascending.
-- Entries without points or comments (job posts, `discuss`) count as `0`.
-- Tokens such as `(2026)` count as words because they contain alphanumeric characters.
+Business rules and documented assumptions live in the README
+([Requirements & assumptions](README.md#requirements--assumptions)) and are specified by the tests.
+They are the single source of truth: never change one without updating the other.
 
 ## Stack
 
