@@ -22,7 +22,8 @@ and the applied filter, plus status, result count, duration, cache hit and error
 
 Assumptions where the requirements are not explicit (each one is covered by tests):
 
-- Ordering is **descending**; ties are broken by rank ascending (original page order).
+- Ordering is **descending** (reading "ordered by the number of comments first" as most-commented
+  first); ties are broken by rank ascending (original page order).
 - Entries without points or comments (job posts, `discuss`) count as `0`.
 - Tokens such as `(2026)` count as words because they contain alphanumeric characters.
 
