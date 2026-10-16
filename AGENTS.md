@@ -13,7 +13,7 @@ typescript-eslint don't support 7 yet.
 ```
 src/
   domain/          business concepts and rules: pure types and functions
-  application/     use cases (EntriesService) and the ports they need (ports.ts)
+  application/     use cases (EntriesService, UsageService) and the ports they need (ports.ts)
   infrastructure/  port implementations: scraper/, cache/, sqlite/
   http/            Fastify app (routes + schemas)
   config.ts        environment configuration

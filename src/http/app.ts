@@ -1,12 +1,18 @@
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import type { EntriesService } from '../application/entriesService';
 import { SourceUnavailableError } from '../application/errors';
+import type { UsageService } from '../application/usageService';
 import type { FilterName } from '../domain/filters';
 import { entriesRouteSchema, usageRouteSchema } from './schemas';
 
+export interface AppServices {
+  readonly entriesService: EntriesService;
+  readonly usageService: UsageService;
+}
+
 /** Builds the HTTP app without listening, so tests can drive it with `app.inject()`. */
 export const buildApp = (
-  service: EntriesService,
+  { entriesService, usageService }: AppServices,
   options: FastifyServerOptions = {},
 ): FastifyInstance => {
   const app = Fastify(options);
@@ -26,7 +32,7 @@ export const buildApp = (
     '/entries',
     { schema: entriesRouteSchema },
     async (request) => {
-      const { filter, entries } = await service.getEntries(request.query.filter);
+      const { filter, entries } = await entriesService.getEntries(request.query.filter);
       return { filter, count: entries.length, entries };
     },
   );
@@ -35,7 +41,7 @@ export const buildApp = (
     '/usage',
     { schema: usageRouteSchema },
     async (request) => {
-      const records = await service.getUsage(request.query.limit);
+      const records = await usageService.getUsage(request.query.limit);
       return { count: records.length, records };
     },
   );

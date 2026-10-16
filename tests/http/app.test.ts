@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import type { FastifyInstance } from 'fastify';
 import { EntriesService } from '../../src/application/entriesService';
 import { SourceUnavailableError } from '../../src/application/errors';
+import { UsageService } from '../../src/application/usageService';
 import type { Entry } from '../../src/domain/entry';
 import { buildApp } from '../../src/http/app';
 import { TtlCache } from '../../src/infrastructure/cache/ttlCache';
@@ -14,17 +15,19 @@ const ENTRIES: Entry[] = [
   anEntry({ rank: 2, title: 'Short title', points: 10 }),
 ];
 
-// Real service, cache and SQLite (in memory); only the Hacker News source is faked.
+// Real services, cache and SQLite (in memory); only the Hacker News source is faked.
 const setup = (fetchEntries: () => Promise<Entry[]> = () => Promise.resolve(ENTRIES)) => {
   const db = new DatabaseSync(':memory:');
   migrate(db);
-  const service = new EntriesService(
+  const usageRepository = new SqliteUsageRepository(db);
+  const entriesService = new EntriesService(
     { fetchEntries },
     new TtlCache(60_000, Date.now),
-    new SqliteUsageRepository(db),
+    usageRepository,
     Date.now,
   );
-  return { app: buildApp(service), db };
+  const usageService = new UsageService(usageRepository);
+  return { app: buildApp({ entriesService, usageService }), db };
 };
 
 describe('HTTP API', () => {

@@ -1,5 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 import { EntriesService } from './application/entriesService';
+import { UsageService } from './application/usageService';
 import type { Config } from './config';
 import { TtlCache } from './infrastructure/cache/ttlCache';
 import { HackerNewsScraper } from './infrastructure/scraper/hackerNewsScraper';
@@ -8,6 +9,7 @@ import { SqliteUsageRepository } from './infrastructure/sqlite/sqliteUsageReposi
 
 export interface Container {
   readonly entriesService: EntriesService;
+  readonly usageService: UsageService;
   /** Releases the resources opened by the container (database handle). */
   close(): void;
 }
@@ -21,12 +23,15 @@ export const createContainer = (config: Config): Container => {
   const db = new DatabaseSync(config.databasePath);
   migrate(db);
 
+  const usageRepository = new SqliteUsageRepository(db);
+
   const entriesService = new EntriesService(
     new HackerNewsScraper(fetch),
     new TtlCache(config.cacheTtlMs, now),
-    new SqliteUsageRepository(db),
+    usageRepository,
     now,
   );
+  const usageService = new UsageService(usageRepository);
 
-  return { entriesService, close: () => db.close() };
+  return { entriesService, usageService, close: () => db.close() };
 };

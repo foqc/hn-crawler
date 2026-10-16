@@ -15,10 +15,9 @@ const setup = (fetchEntries: () => Promise<Entry[]> = () => Promise.resolve(ENTR
   let time = Date.parse('2026-10-16T12:00:00.000Z');
   const now = (): number => time;
   const saved: UsageRecord[] = [];
-  const list = jest.fn<ReturnType<UsageRepository['list']>, [number]>().mockResolvedValue([]);
   const usage: UsageRepository = {
     save: (record) => Promise.resolve(void saved.push(record)),
-    list,
+    list: () => Promise.resolve([]),
   };
   // Each fetch takes 120ms of fake time, so durations are deterministic.
   const source = {
@@ -28,7 +27,7 @@ const setup = (fetchEntries: () => Promise<Entry[]> = () => Promise.resolve(ENTR
     }),
   };
   const service = new EntriesService(source, new TtlCache(60_000, now), usage, now);
-  return { service, source, saved, list };
+  return { service, source, saved };
 };
 
 describe('EntriesService', () => {
@@ -112,13 +111,5 @@ describe('EntriesService', () => {
 
     await expect(service.getEntries()).rejects.toThrow('disk full');
     expect(save).toHaveBeenCalledTimes(1);
-  });
-
-  it('reads the usage log from the repository', async () => {
-    const { service, list } = setup();
-
-    await service.getUsage(5);
-
-    expect(list).toHaveBeenCalledWith(5);
   });
 });

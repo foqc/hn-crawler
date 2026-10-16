@@ -1,6 +1,6 @@
 import type { Entry } from '../domain/entry';
 import { applyFilter, type FilterName } from '../domain/filters';
-import type { AppliedFilter, StoredUsageRecord, UsageRecord } from '../domain/usage';
+import type { AppliedFilter, UsageRecord } from '../domain/usage';
 import type { Cache, Clock, EntriesSource, UsageRepository } from './ports';
 
 export interface EntriesResult {
@@ -15,7 +15,7 @@ interface LoadedEntries {
 
 type UsageOutcome = Pick<UsageRecord, 'status' | 'resultCount' | 'cacheHit' | 'errorMessage'>;
 
-/** Use cases of the crawler: get (optionally filtered) entries and read the usage log. */
+/** Gets the front page entries, optionally filtered, and records the usage of every request. */
 export class EntriesService {
   constructor(
     private readonly source: EntriesSource,
@@ -50,10 +50,6 @@ export class EntriesService {
       errorMessage: null,
     });
     return { filter, entries };
-  }
-
-  getUsage(limit: number): Promise<StoredUsageRecord[]> {
-    return this.usage.list(limit);
   }
 
   /** Cache-aside: serves the cached entries if present, otherwise scrapes and caches them. */

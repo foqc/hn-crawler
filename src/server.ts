@@ -5,7 +5,8 @@ import { buildApp } from './http/app';
 const main = async (): Promise<void> => {
   const config = loadConfig(process.env);
   const container = createContainer(config);
-  const app = buildApp(container.entriesService, { logger: true });
+  const { entriesService, usageService } = container;
+  const app = buildApp({ entriesService, usageService }, { logger: true });
 
   const shutdown = async (): Promise<void> => {
     await app.close();
