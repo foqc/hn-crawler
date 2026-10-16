@@ -1,7 +1,7 @@
+import { SourceUnavailableError } from '../../../src/application/errors';
 import {
   HACKER_NEWS_URL,
   HackerNewsScraper,
-  ScrapeError,
 } from '../../../src/infrastructure/scraper/hackerNewsScraper';
 
 const HTML = `<table>
@@ -30,20 +30,20 @@ describe('HackerNewsScraper', () => {
     expect(entries).toEqual([{ rank: 1, title: 'Hello world', points: 10, comments: 0 }]);
   });
 
-  it('throws a ScrapeError on a non-2xx response', async () => {
+  it('throws SourceUnavailableError on a non-2xx response', async () => {
     const scraper = new HackerNewsScraper(fetchReturning('Unavailable', 503));
 
     await expect(scraper.fetchEntries()).rejects.toThrow(
-      new ScrapeError(`${HACKER_NEWS_URL} responded with HTTP 503`),
+      new SourceUnavailableError(`${HACKER_NEWS_URL} responded with HTTP 503`),
     );
   });
 
-  it('wraps network failures in a ScrapeError keeping the cause', async () => {
+  it('wraps network failures in SourceUnavailableError keeping the cause', async () => {
     const cause = new TypeError('fetch failed');
     const fetchFn = jest.fn<Promise<Response>, Parameters<typeof fetch>>().mockRejectedValue(cause);
 
     await expect(new HackerNewsScraper(fetchFn).fetchEntries()).rejects.toMatchObject({
-      name: 'ScrapeError',
+      name: 'SourceUnavailableError',
       cause,
     });
   });

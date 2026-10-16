@@ -1,7 +1,7 @@
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
-import type { FilterName } from '../domain/filters';
-import { ScrapeError } from '../infrastructure/scraper/hackerNewsScraper';
 import type { EntriesService } from '../application/entriesService';
+import { SourceUnavailableError } from '../application/errors';
+import type { FilterName } from '../domain/filters';
 import { entriesRouteSchema, usageRouteSchema } from './schemas';
 
 /** Builds the HTTP app without listening, so tests can drive it with `app.inject()`. */
@@ -12,8 +12,8 @@ export const buildApp = (
   const app = Fastify(options);
 
   app.setErrorHandler((error, request, reply) => {
-    if (error instanceof ScrapeError) {
-      request.log.warn({ err: error }, 'Hacker News is unavailable');
+    if (error instanceof SourceUnavailableError) {
+      request.log.warn({ err: error }, 'Entries source is unavailable');
       return reply
         .code(502)
         .send({ statusCode: 502, error: 'Bad Gateway', message: error.message });

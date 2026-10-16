@@ -1,10 +1,10 @@
 import { DatabaseSync } from 'node:sqlite';
 import type { FastifyInstance } from 'fastify';
 import { EntriesService } from '../../src/application/entriesService';
+import { SourceUnavailableError } from '../../src/application/errors';
 import type { Entry } from '../../src/domain/entry';
 import { buildApp } from '../../src/http/app';
 import { TtlCache } from '../../src/infrastructure/cache/ttlCache';
-import { ScrapeError } from '../../src/infrastructure/scraper/hackerNewsScraper';
 import { SqliteUsageRepository } from '../../src/infrastructure/sqlite/sqliteUsageRepository';
 import { anEntry } from '../support/entries';
 
@@ -62,8 +62,10 @@ describe('HTTP API', () => {
       expect(response.statusCode).toBe(400);
     });
 
-    it('answers 502 when Hacker News cannot be scraped', async () => {
-      ({ app, db } = setup(() => Promise.reject(new ScrapeError('HN responded with HTTP 503'))));
+    it('answers 502 when the entries source is unavailable', async () => {
+      ({ app, db } = setup(() =>
+        Promise.reject(new SourceUnavailableError('HN responded with HTTP 503')),
+      ));
 
       const response = await app.inject({ url: '/entries' });
 
