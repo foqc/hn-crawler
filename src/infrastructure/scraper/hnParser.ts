@@ -1,7 +1,5 @@
 import * as cheerio from 'cheerio';
-import type { Entry } from '../../domain/entry';
-
-export const MAX_ENTRIES = 30;
+import { FRONT_PAGE_SIZE, type Entry } from '../../domain/entry';
 
 // Matches "1 comment" and "109 comments"; \s also covers the &nbsp; HN puts between them.
 // Anchoring avoids false positives such as a username containing "comment".
@@ -17,7 +15,7 @@ export const parseCount = (text: string | undefined): number => {
  * Parses the Hacker News front page. Each entry spans two rows: `tr.athing` holds rank and title,
  * and the next row holds points and comments. Entries without them (job posts, "discuss") get 0.
  */
-export const parseEntries = (html: string, limit = MAX_ENTRIES): Entry[] => {
+export const parseEntries = (html: string, limit = FRONT_PAGE_SIZE): Entry[] => {
   const $ = cheerio.load(html);
 
   return $('tr.athing')

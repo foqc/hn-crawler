@@ -1,10 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import {
-  MAX_ENTRIES,
-  parseCount,
-  parseEntries,
-} from '../../../src/infrastructure/scraper/hnParser';
+import { FRONT_PAGE_SIZE } from '../../../src/domain/entry';
+import { parseCount, parseEntries } from '../../../src/infrastructure/scraper/hnParser';
 
 const fixture = readFileSync(join(__dirname, '../../fixtures/hn-front-page.html'), 'utf8');
 
@@ -38,8 +35,10 @@ describe('parseEntries', () => {
     const entries = parseEntries(fixture);
 
     it('returns the first 30 entries with consecutive ranks', () => {
-      expect(entries).toHaveLength(MAX_ENTRIES);
-      expect(entries.map((e) => e.rank)).toEqual(Array.from({ length: 30 }, (_, i) => i + 1));
+      expect(entries).toHaveLength(FRONT_PAGE_SIZE);
+      expect(entries.map((e) => e.rank)).toEqual(
+        Array.from({ length: FRONT_PAGE_SIZE }, (_, i) => i + 1),
+      );
     });
 
     it('extracts rank, title, points and comments', () => {
@@ -102,7 +101,7 @@ describe('parseEntries', () => {
     it('returns at most the requested number of entries', () => {
       const rows = Array.from({ length: 35 }, (_, i) => entryRows(i + 1, `Title ${i + 1}`));
 
-      expect(parseEntries(page(...rows))).toHaveLength(MAX_ENTRIES);
+      expect(parseEntries(page(...rows))).toHaveLength(FRONT_PAGE_SIZE);
       expect(parseEntries(page(...rows), 3)).toHaveLength(3);
     });
 
