@@ -15,16 +15,25 @@ export class UsageService {
   constructor(
     private readonly usage: UsageRepository,
     private readonly now: Clock,
+    private readonly reportError: (error: unknown) => void,
   ) {}
 
-  /** Records a request that started at `startedAt`; its duration is measured up to now. */
-  record(filter: AppliedFilter, startedAt: number, outcome: UsageOutcome): Promise<void> {
-    return this.usage.save({
-      requestedAt: new Date(startedAt).toISOString(),
-      filter,
-      durationMs: this.now() - startedAt,
-      ...outcome,
-    });
+  /**
+   * Records a request that started at `startedAt`; its duration is measured up to now.
+   * Best-effort: a failure to save is reported but never thrown, so the usage log can neither
+   * fail a request that worked nor replace the error of one that failed.
+   */
+  async record(filter: AppliedFilter, startedAt: number, outcome: UsageOutcome): Promise<void> {
+    try {
+      await this.usage.save({
+        requestedAt: new Date(startedAt).toISOString(),
+        filter,
+        durationMs: this.now() - startedAt,
+        ...outcome,
+      });
+    } catch (error) {
+      this.reportError(error);
+    }
   }
 
   getUsage(limit: number): Promise<StoredUsageRecord[]> {

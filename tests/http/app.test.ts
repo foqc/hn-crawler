@@ -19,14 +19,15 @@ const ENTRIES: Entry[] = [
 const setup = (fetchEntries: () => Promise<Entry[]> = () => Promise.resolve(ENTRIES)) => {
   const db = new DatabaseSync(':memory:');
   migrate(db);
-  const usageService = new UsageService(new SqliteUsageRepository(db), Date.now);
+  const reportError = jest.fn<void, [unknown]>();
+  const usageService = new UsageService(new SqliteUsageRepository(db), Date.now, reportError);
   const entriesService = new EntriesService(
     { fetchEntries },
     new TtlCache(60_000, Date.now),
     usageService,
     Date.now,
   );
-  return { app: buildApp({ entriesService, usageService }), db };
+  return { app: buildApp({ entriesService, usageService }), db, reportError };
 };
 
 describe('HTTP API', () => {
@@ -75,6 +76,31 @@ describe('HTTP API', () => {
 
       expect(response.statusCode).toBe(502);
       expect(response.json()).toMatchObject({ message: 'HN responded with HTTP 503' });
+    });
+
+    describe('when the usage log cannot be written', () => {
+      it('still answers 200 and reports the logging error', async () => {
+        const ctx = setup();
+        ctx.db.exec('DROP TABLE usage_logs');
+
+        const response = await ctx.app.inject({ url: '/entries' });
+
+        expect(response.statusCode).toBe(200);
+        expect(ctx.reportError).toHaveBeenCalledTimes(1);
+        await ctx.app.close();
+        ctx.db.close();
+      });
+
+      it('keeps answering 502 when the source is unavailable', async () => {
+        const ctx = setup(() => Promise.reject(new SourceUnavailableError('HN is down')));
+        ctx.db.exec('DROP TABLE usage_logs');
+
+        const response = await ctx.app.inject({ url: '/entries' });
+
+        expect(response.statusCode).toBe(502);
+        await ctx.app.close();
+        ctx.db.close();
+      });
     });
   });
 

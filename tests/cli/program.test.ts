@@ -18,7 +18,7 @@ const ENTRIES: Entry[] = [
 const setup = (fetchEntries: () => Promise<Entry[]> = () => Promise.resolve(ENTRIES)) => {
   const db = new DatabaseSync(':memory:');
   migrate(db);
-  const usageService = new UsageService(new SqliteUsageRepository(db), Date.now);
+  const usageService = new UsageService(new SqliteUsageRepository(db), Date.now, () => undefined);
   const entriesService = new EntriesService(
     { fetchEntries },
     new TtlCache(60_000, Date.now),

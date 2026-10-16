@@ -23,7 +23,9 @@ export const createContainer = (config: Config): Container => {
   const db = new DatabaseSync(config.databasePath);
   migrate(db);
 
-  const usageService = new UsageService(new SqliteUsageRepository(db), now);
+  const usageService = new UsageService(new SqliteUsageRepository(db), now, (error) =>
+    console.error('Could not record usage:', error),
+  );
   const entriesService = new EntriesService(
     new HackerNewsScraper(fetch),
     new TtlCache(config.cacheTtlMs, now),

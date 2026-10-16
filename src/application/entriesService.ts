@@ -27,10 +27,18 @@ export class EntriesService {
     const filter = filterName ?? 'none';
     const startedAt = this.now();
 
-    let loaded: LoadedEntries;
     try {
-      loaded = await this.loadEntries();
+      const loaded = await this.loadEntries();
+      const entries = filterName ? applyFilter(loaded.entries, filterName) : loaded.entries;
+      await this.usageService.record(filter, startedAt, {
+        status: 'success',
+        resultCount: entries.length,
+        cacheHit: loaded.cacheHit,
+        errorMessage: null,
+      });
+      return { filter, entries };
     } catch (error) {
+      // record() never throws, so this only sees failures to load the entries.
       await this.usageService.record(filter, startedAt, {
         status: 'error',
         resultCount: 0,
@@ -39,16 +47,6 @@ export class EntriesService {
       });
       throw error;
     }
-
-    // Outside the try block: if saving the usage fails, it must not be recorded again as a failure.
-    const entries = filterName ? applyFilter(loaded.entries, filterName) : loaded.entries;
-    await this.usageService.record(filter, startedAt, {
-      status: 'success',
-      resultCount: entries.length,
-      cacheHit: loaded.cacheHit,
-      errorMessage: null,
-    });
-    return { filter, entries };
   }
 
   /** Cache-aside: serves the cached entries if present, otherwise scrapes and caches them. */

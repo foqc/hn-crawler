@@ -30,7 +30,7 @@ const setup = (fetchEntries: () => Promise<Entry[]> = () => Promise.resolve(ENTR
   const service = new EntriesService(
     source,
     new TtlCache(60_000, now),
-    new UsageService(usage, now),
+    new UsageService(usage, now, () => undefined),
     now,
   );
   return { service, source, saved };
@@ -105,17 +105,34 @@ describe('EntriesService', () => {
     ]);
   });
 
-  it('does not record a request twice when saving its usage fails', async () => {
-    const save = jest.fn<Promise<void>, [UsageRecord]>().mockRejectedValue(new Error('disk full'));
-    const usage: UsageRepository = { save, list: () => Promise.resolve([]) };
-    const service = new EntriesService(
-      { fetchEntries: () => Promise.resolve(ENTRIES) },
-      new TtlCache(60_000, Date.now),
-      new UsageService(usage, Date.now),
-      Date.now,
-    );
+  describe('when the usage log cannot be written', () => {
+    const setupFailingUsage = (fetchEntries: () => Promise<Entry[]>) => {
+      const save = jest
+        .fn<Promise<void>, [UsageRecord]>()
+        .mockRejectedValue(new Error('disk full'));
+      const reportError = jest.fn<void, [unknown]>();
+      const service = new EntriesService(
+        { fetchEntries },
+        new TtlCache(60_000, Date.now),
+        new UsageService({ save, list: () => Promise.resolve([]) }, Date.now, reportError),
+        Date.now,
+      );
+      return { service, save, reportError };
+    };
 
-    await expect(service.getEntries()).rejects.toThrow('disk full');
-    expect(save).toHaveBeenCalledTimes(1);
+    it('still returns the entries and reports the logging error once', async () => {
+      const { service, save, reportError } = setupFailingUsage(() => Promise.resolve(ENTRIES));
+
+      await expect(service.getEntries()).resolves.toEqual({ filter: 'none', entries: ENTRIES });
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(reportError).toHaveBeenCalledWith(new Error('disk full'));
+    });
+
+    it('keeps the original error of a failed request', async () => {
+      const original = new Error('Hacker News is down');
+      const { service } = setupFailingUsage(() => Promise.reject(original));
+
+      await expect(service.getEntries()).rejects.toBe(original);
+    });
   });
 });

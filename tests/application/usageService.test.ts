@@ -10,8 +10,9 @@ const setup = () => {
   };
   const save = jest.fn<Promise<void>, [UsageRecord]>().mockResolvedValue();
   const list = jest.fn<ReturnType<UsageRepository['list']>, [number]>().mockResolvedValue([]);
-  const service = new UsageService({ save, list }, now);
-  return { service, now, advance, save, list };
+  const reportError = jest.fn<void, [unknown]>();
+  const service = new UsageService({ save, list }, now, reportError);
+  return { service, now, advance, save, list, reportError };
 };
 
 describe('UsageService', () => {
@@ -36,6 +37,22 @@ describe('UsageService', () => {
       cacheHit: true,
       errorMessage: null,
     });
+  });
+
+  it('reports a failed save instead of throwing it', async () => {
+    const { service, save, reportError } = setup();
+    const error = new Error('disk full');
+    save.mockRejectedValueOnce(error);
+
+    await expect(
+      service.record('none', 0, {
+        status: 'success',
+        resultCount: 0,
+        cacheHit: false,
+        errorMessage: null,
+      }),
+    ).resolves.toBeUndefined();
+    expect(reportError).toHaveBeenCalledWith(error);
   });
 
   it('reads the usage log from the repository', async () => {
