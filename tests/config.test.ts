@@ -21,7 +21,15 @@ describe('loadConfig', () => {
     });
   });
 
-  test.each(['abc', '-1', '1.5', ''])('rejects %p as a numeric value', (value) => {
-    expect(() => loadConfig({ PORT: value })).toThrow('PORT must be a non-negative integer');
+  test.each(['abc', '-1', '1.5', '', '65536'])('rejects %p as a port', (value) => {
+    expect(() => loadConfig({ PORT: value })).toThrow(
+      'PORT must be an integer between 0 and 65535',
+    );
+  });
+
+  test.each(['abc', '-1'])('rejects %p as a cache TTL', (value) => {
+    expect(() => loadConfig({ CACHE_TTL_MS: value })).toThrow(
+      'CACHE_TTL_MS must be a non-negative integer',
+    );
   });
 });
