@@ -64,6 +64,39 @@ An unknown filter returns `400`; if Hacker News cannot be reached the API return
 | `CACHE_TTL_MS`  | `60000`     | How long scraped entries are reused (0 = never) |
 | `DATABASE_PATH` | `usage.db`  | SQLite file for the usage log                   |
 
+## Architecture
+
+A layered design: controller (routes) → service → repository, with the business rules in a pure
+domain layer.
+
+```
+src/
+  domain/          business rules as pure functions and types: entry, word count, filters, usage
+  application/     services (EntriesService, UsageService) and the interfaces they need (ports.ts)
+  infrastructure/  implementations of those interfaces: scraper/ (fetch + cheerio), cache/, sqlite/
+  http/            Fastify app; routes/ has one plugin per resource (route + JSON schema)
+  container.ts     the only place where implementations are created and wired together
+  server.ts        entrypoint: config -> container -> Fastify, plus graceful shutdown
+```
+
+A request to `GET /entries?filter=long-titles` flows like this:
+
+```
+routes/entries.ts -> EntriesService -> cache hit?  yes -> cached entries
+                                                    no  -> HackerNewsScraper -> cache.set
+                                    -> applyFilter (domain)
+                                    -> UsageService.record -> SqliteUsageRepository
+```
+
+- **Dependencies point inwards:** `http` and `infrastructure` depend on `application`, which
+  depends on `domain`. Services reach external systems (Hacker News, cache, database, clock)
+  only through interfaces, so tests replace them with fakes, and a technology can be swapped
+  (e.g. SQLite → PostgreSQL, memory → Redis) in `container.ts` alone.
+- **Functional core, OO shell:** the domain is pure functions over readonly data; classes are used
+  only for components with dependencies or state, injected through the constructor.
+- **Errors:** the scraper raises `SourceUnavailableError`, which the HTTP layer maps to `502`
+  without knowing about Hacker News.
+
 ## Design decisions
 
 ### Fastify instead of Express
@@ -96,7 +129,9 @@ An unknown filter returns `400`; if Hacker News cannot be reached the API return
 
 ### Usage is tracked in the service, not in an HTTP middleware
 
-`EntriesService.getEntries` records one usage row per call, whether it succeeds or fails.
+`EntriesService.getEntries` records one usage row per call through `UsageService`, whether it
+succeeds or fails. `UsageService` owns the usage log: it builds and saves each record and answers
+the queries of `GET /usage`.
 
 - **Why the service:** storing usage is a business requirement, so it must hold for every
   entrypoint (the API today, a CLI later), and a CLI never goes through Fastify's hooks. The
@@ -133,7 +168,8 @@ HTML samples.
 - Git hooks (installed automatically by `npm install` through Husky):
   - `pre-commit`: formats and lints staged files (lint-staged).
   - `commit-msg`: enforces [Conventional Commits](https://www.conventionalcommits.org/) (commitlint).
-  - `pre-push`: runs lint and the full test suite.
+  - `pre-push`: runs the type check, lint and the full test suite.
+- CI (GitHub Actions) runs the same checks, plus the format check, on every push and pull request.
 - [`AGENTS.md`](AGENTS.md) documents conventions for AI coding agents and humans alike (Claude Code
   reads it natively). The [`pre-commit-review`](.claude/skills/pre-commit-review/SKILL.md) skill is
   the checklist used to review each change before committing.
