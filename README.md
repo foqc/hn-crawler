@@ -203,12 +203,20 @@ Known trade-offs, accepted for the scope of this exercise:
   rotation.
 - **No cache stampede protection:** concurrent misses each scrape Hacker News once.
 - **Single machine:** the cache lives in memory and SQLite is a local file. API and CLI can share
-  the database (writes wait up to 5 s for a lock), but scaling out would need a shared cache and
-  database.
+  the database: it runs in WAL mode, so reads never wait for writes, and a write waits at most
+  250 ms for a lock held by the other process. `node:sqlite` is synchronous, so that wait blocks
+  the event loop and every in-flight request; it is kept short on purpose, and if it expires the
+  usage row is dropped and reported (best-effort). Scaling out would need a shared cache and an
+  asynchronous database.
 - **Depends on Hacker News markup:** a layout change is detected and answered with `502`, but the
   parser must be updated to recover.
 
 ## Testing
+
+```bash
+npm test                # 117 tests, no network access
+npm run test:coverage   # coverage report in coverage/
+```
 
 Tests never hit the network. The parser runs against
 [`tests/fixtures/hn-front-page.html`](tests/fixtures/hn-front-page.html), a snapshot of the Hacker
