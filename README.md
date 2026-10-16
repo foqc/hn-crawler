@@ -3,8 +3,6 @@
 Web crawler that scrapes the first 30 entries from [Hacker News](https://news.ycombinator.com/)
 and exposes filters over them, storing usage data for every request.
 
-> Work in progress — full documentation and design decisions will be added as the project evolves.
-
 ## Requirements & assumptions
 
 For each of the first 30 entries the crawler extracts **rank, title, points and number of comments**.
@@ -67,6 +65,31 @@ An unknown filter returns `400`; if Hacker News cannot be reached the API return
 | `DATABASE_PATH` | `usage.db`  | SQLite file for the usage log                   |
 
 ## Design decisions
+
+### Fastify instead of Express
+
+- JSON Schema validation and serialization are built in: an unknown filter is rejected with `400`
+  without extra libraries (Express would need e.g. zod or joi).
+- `app.inject()` drives the API in tests without opening a port (Express would need supertest).
+- First-class TypeScript types and async handlers whose errors reach one error handler.
+
+### SQLite (`node:sqlite`) for usage data
+
+- Built into Node: no extra dependency, no native compilation (unlike `better-sqlite3`) and no
+  server to run (unlike PostgreSQL or Redis).
+- Data survives restarts and can be queried with SQL, unlike a JSON file or an in-memory list.
+- Trade-offs: the module is still flagged experimental in Node 22, and it is synchronous, which is
+  negligible for one small insert per request. `UsageRepository` keeps the rest of the app
+  independent of it.
+
+### cheerio instead of regular expressions for parsing
+
+- HTML is a tree, not a flat string: each entry spans two table rows (title row and points/comments
+  row), which CSS selectors relate directly (`tr.athing` and its next sibling).
+- cheerio decodes HTML entities (`&#x27;` → `'`) and tolerates attribute order, whitespace and
+  markup changes that would silently break a regex.
+- Regular expressions are still used where they fit: on short, already extracted text such as
+  `"164 points"`.
 
 ### Usage is tracked in the service, not in an HTTP middleware
 
