@@ -36,8 +36,20 @@ export class EntriesService {
 
   /** Reads entries through the cache and applies the filter, if any. */
   private async loadEntries(filterName?: FilterName): Promise<LoadedEntries> {
-    const { value, hit } = await this.cache.get(() => this.source.fetchEntries());
-    return { entries: filterName ? applyFilter(value, filterName) : value, cacheHit: hit };
+    const { entries, cacheHit } = await this.fetchWithCache();
+    return { entries: filterName ? applyFilter(entries, filterName) : entries, cacheHit };
+  }
+
+  /** Cache-aside: serves the cached entries if present, otherwise scrapes and caches them. */
+  private async fetchWithCache(): Promise<LoadedEntries> {
+    const cached = await this.cache.get();
+    if (cached !== undefined) {
+      return { entries: cached, cacheHit: true };
+    }
+
+    const entries = await this.source.fetchEntries();
+    await this.cache.set(entries);
+    return { entries, cacheHit: false };
   }
 
   /** Runs an operation and records its usage exactly once, whether it succeeds or fails. */

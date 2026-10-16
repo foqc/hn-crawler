@@ -75,6 +75,17 @@ describe('EntriesService', () => {
     expect(saved.map((r) => r.cacheHit)).toEqual([false, true]);
   });
 
+  it('does not cache a failed scrape', async () => {
+    const fetchEntries = jest
+      .fn<Promise<Entry[]>, []>()
+      .mockRejectedValueOnce(new Error('Hacker News is down'))
+      .mockResolvedValueOnce(ENTRIES);
+    const { service } = setup(fetchEntries);
+
+    await expect(service.getEntries()).rejects.toThrow('Hacker News is down');
+    await expect(service.getEntries()).resolves.toEqual({ filter: 'none', entries: ENTRIES });
+  });
+
   it('records failed requests and rethrows the error', async () => {
     const error = new Error('Hacker News is down');
     const { service, saved } = setup(() => Promise.reject(error));

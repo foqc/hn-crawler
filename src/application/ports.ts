@@ -12,13 +12,11 @@ export interface EntriesSource {
   fetchEntries(): Promise<Entry[]>;
 }
 
-export interface CacheResult<T> {
-  readonly value: T;
-  readonly hit: boolean;
-}
-
+/** Holds a single value; asynchronous so it can be backed by an external store such as Redis. */
 export interface Cache<T> {
-  get(load: () => Promise<T>): Promise<CacheResult<T>>;
+  /** The cached value, or `undefined` when there is none or it has expired. */
+  get(): Promise<T | undefined>;
+  set(value: T): Promise<void>;
 }
 
 /** Storage boundary for usage data. Asynchronous so it can be backed by any database. */

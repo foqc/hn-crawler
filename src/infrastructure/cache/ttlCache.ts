@@ -1,34 +1,21 @@
-import type { Cache, CacheResult, Clock } from '../../application/ports';
+import type { Cache, Clock } from '../../application/ports';
 
-/**
- * Caches a single value for `ttlMs`. The in-flight promise is what gets cached, so concurrent
- * callers share one load instead of all hitting the source when the entry expires (cache stampede).
- * Failed loads are not cached: the next call retries.
- */
+/** In-memory cache for a single value that expires `ttlMs` after it is set. */
 export class TtlCache<T> implements Cache<T> {
-  private entry?: { readonly promise: Promise<T>; readonly expiresAt: number };
+  private entry?: { readonly value: T; readonly expiresAt: number };
 
   constructor(
     private readonly ttlMs: number,
     private readonly now: Clock,
   ) {}
 
-  async get(load: () => Promise<T>): Promise<CacheResult<T>> {
-    if (this.entry && this.now() < this.entry.expiresAt) {
-      return { value: await this.entry.promise, hit: true };
-    }
+  get(): Promise<T | undefined> {
+    const isFresh = this.entry !== undefined && this.now() < this.entry.expiresAt;
+    return Promise.resolve(isFresh ? this.entry?.value : undefined);
+  }
 
-    const promise = load();
-    this.entry = { promise, expiresAt: this.now() + this.ttlMs };
-
-    try {
-      return { value: await promise, hit: false };
-    } catch (error) {
-      // Only evict our own entry: a newer load may have replaced it meanwhile.
-      if (this.entry.promise === promise) {
-        this.entry = undefined;
-      }
-      throw error;
-    }
+  set(value: T): Promise<void> {
+    this.entry = { value, expiresAt: this.now() + this.ttlMs };
+    return Promise.resolve();
   }
 }

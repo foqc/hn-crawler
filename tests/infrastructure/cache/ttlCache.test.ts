@@ -2,9 +2,9 @@ import { TtlCache } from '../../../src/infrastructure/cache/ttlCache';
 
 const TTL_MS = 1_000;
 
-const setup = () => {
+const setup = (ttlMs = TTL_MS) => {
   let time = 0;
-  const cache = new TtlCache<string>(TTL_MS, () => time);
+  const cache = new TtlCache<string>(ttlMs, () => time);
   const advance = (ms: number): void => {
     time += ms;
   };
@@ -12,51 +12,46 @@ const setup = () => {
 };
 
 describe('TtlCache', () => {
-  it('loads on the first call and reports a miss', async () => {
+  it('is empty until a value is set', async () => {
     const { cache } = setup();
-    const load = jest.fn().mockResolvedValue('value');
 
-    await expect(cache.get(load)).resolves.toEqual({ value: 'value', hit: false });
-    expect(load).toHaveBeenCalledTimes(1);
+    await expect(cache.get()).resolves.toBeUndefined();
   });
 
-  it('serves the cached value within the TTL and reports a hit', async () => {
+  it('returns the value within the TTL', async () => {
     const { cache, advance } = setup();
-    const load = jest.fn().mockResolvedValue('value');
 
-    await cache.get(load);
+    await cache.set('value');
     advance(TTL_MS - 1);
 
-    await expect(cache.get(load)).resolves.toEqual({ value: 'value', hit: true });
-    expect(load).toHaveBeenCalledTimes(1);
+    await expect(cache.get()).resolves.toBe('value');
   });
 
-  it('reloads once the TTL has expired', async () => {
+  it('expires the value once the TTL has elapsed', async () => {
     const { cache, advance } = setup();
-    const load = jest.fn().mockResolvedValueOnce('old').mockResolvedValueOnce('new');
 
-    await cache.get(load);
+    await cache.set('value');
     advance(TTL_MS);
 
-    await expect(cache.get(load)).resolves.toEqual({ value: 'new', hit: false });
-    expect(load).toHaveBeenCalledTimes(2);
+    await expect(cache.get()).resolves.toBeUndefined();
   });
 
-  it('shares a single in-flight load between concurrent callers', async () => {
-    const { cache } = setup();
-    const load = jest.fn().mockResolvedValue('value');
+  it('restarts the TTL when a new value is set', async () => {
+    const { cache, advance } = setup();
 
-    const results = await Promise.all([cache.get(load), cache.get(load), cache.get(load)]);
+    await cache.set('old');
+    advance(TTL_MS - 1);
+    await cache.set('new');
+    advance(TTL_MS - 1);
 
-    expect(load).toHaveBeenCalledTimes(1);
-    expect(results.map((r) => r.value)).toEqual(['value', 'value', 'value']);
+    await expect(cache.get()).resolves.toBe('new');
   });
 
-  it('does not cache failures', async () => {
-    const { cache } = setup();
-    const load = jest.fn().mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce('value');
+  it('never keeps a value when the TTL is 0', async () => {
+    const { cache } = setup(0);
 
-    await expect(cache.get(load)).rejects.toThrow('boom');
-    await expect(cache.get(load)).resolves.toEqual({ value: 'value', hit: false });
+    await cache.set('value');
+
+    await expect(cache.get()).resolves.toBeUndefined();
   });
 });
