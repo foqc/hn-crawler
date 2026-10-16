@@ -17,7 +17,9 @@ src/
   cache/     in-memory TTL cache
   usage/     UsageRepository interface + SQLite implementation
   service/   EntriesService: orchestrates cache, scraping, filtering and usage logging
-  http/      Fastify app (routes + schemas) and server entrypoint
+  http/      Fastify app (routes + schemas)
+  config.ts  environment configuration
+  server.ts  composition root: the only place that instantiates and wires implementations
 tests/       mirrors src/; fixtures in tests/fixtures/
 ```
 

@@ -34,8 +34,37 @@ Assumptions where the statement is not explicit (each one is covered by tests):
 
 ```bash
 npm install
-npm test
+npm test        # run the test suite
+npm start       # build and start the API on http://127.0.0.1:3000
 ```
+
+Node prints an `ExperimentalWarning` for SQLite on startup: `node:sqlite` is still flagged
+experimental in Node 22, and the warning is expected.
+
+### Endpoints
+
+| Method | Path                           | Description                                        |
+| ------ | ------------------------------ | -------------------------------------------------- |
+| GET    | `/entries`                     | The first 30 entries, in page order                |
+| GET    | `/entries?filter=long-titles`  | Titles with more than 5 words, ordered by comments |
+| GET    | `/entries?filter=short-titles` | Titles with 5 words or fewer, ordered by points    |
+| GET    | `/usage?limit=50`              | Usage log, most recent first (`limit` 1–500)       |
+
+```bash
+curl 'http://127.0.0.1:3000/entries?filter=long-titles'
+curl 'http://127.0.0.1:3000/usage?limit=5'
+```
+
+An unknown filter returns `400`; if Hacker News cannot be reached the API returns `502`.
+
+### Configuration
+
+| Variable        | Default     | Description                                     |
+| --------------- | ----------- | ----------------------------------------------- |
+| `PORT`          | `3000`      | HTTP port                                       |
+| `HOST`          | `127.0.0.1` | Interface to bind                               |
+| `CACHE_TTL_MS`  | `60000`     | How long scraped entries are reused (0 = never) |
+| `DATABASE_PATH` | `usage.db`  | SQLite file for the usage log                   |
 
 ## Testing
 
