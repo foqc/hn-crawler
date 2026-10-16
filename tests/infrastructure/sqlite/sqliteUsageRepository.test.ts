@@ -1,5 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 import type { UsageRecord } from '../../../src/domain/usage';
+import { migrate } from '../../../src/infrastructure/sqlite/schema';
 import { SqliteUsageRepository } from '../../../src/infrastructure/sqlite/sqliteUsageRepository';
 
 const aRecord = (overrides: Partial<UsageRecord> = {}): UsageRecord => ({
@@ -19,6 +20,7 @@ describe('SqliteUsageRepository', () => {
 
   beforeEach(() => {
     db = new DatabaseSync(':memory:');
+    migrate(db);
     repository = new SqliteUsageRepository(db);
   });
 
@@ -48,9 +50,18 @@ describe('SqliteUsageRepository', () => {
     expect(records.map((r) => r.filter)).toEqual(['short-titles', 'long-titles']);
   });
 
-  it('reuses an existing table instead of recreating it', async () => {
+  it('keeps existing data when migrations run again', async () => {
     await repository.save(aRecord());
 
-    await expect(new SqliteUsageRepository(db).list(10)).resolves.toHaveLength(1);
+    migrate(db);
+
+    await expect(repository.list(10)).resolves.toHaveLength(1);
+  });
+
+  it('fails loudly when a stored row holds invalid data', async () => {
+    await repository.save(aRecord());
+    db.exec("UPDATE usage_logs SET filter = 'unknown'");
+
+    await expect(repository.list(10)).rejects.toThrow('Invalid usage_logs.filter: unknown');
   });
 });

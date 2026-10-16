@@ -1,19 +1,7 @@
-import type { DatabaseSync, SQLOutputValue } from 'node:sqlite';
+import type { DatabaseSync, StatementSync } from 'node:sqlite';
 import type { UsageRepository } from '../../application/ports';
-import { FILTER_NAMES } from '../../domain/filters';
-import type { AppliedFilter, StoredUsageRecord, UsageRecord } from '../../domain/usage';
-
-const CREATE_TABLE = `
-  CREATE TABLE IF NOT EXISTS usage_logs (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    requested_at  TEXT    NOT NULL,
-    filter        TEXT    NOT NULL,
-    status        TEXT    NOT NULL,
-    result_count  INTEGER NOT NULL,
-    duration_ms   REAL    NOT NULL,
-    cache_hit     INTEGER NOT NULL,
-    error_message TEXT
-  )`;
+import type { StoredUsageRecord, UsageRecord } from '../../domain/usage';
+import { fromRow, toParams } from './usageRecordMapper';
 
 const INSERT = `
   INSERT INTO usage_logs
@@ -23,35 +11,28 @@ const INSERT = `
 
 const SELECT_LATEST = 'SELECT * FROM usage_logs ORDER BY id DESC LIMIT ?';
 
-const toFilter = (value: SQLOutputValue): AppliedFilter =>
-  FILTER_NAMES.find((name) => name === value) ?? 'none';
-
-const toRecord = (row: Record<string, SQLOutputValue>): StoredUsageRecord => ({
-  id: Number(row.id),
-  requestedAt: typeof row.requested_at === 'string' ? row.requested_at : '',
-  filter: toFilter(row.filter),
-  status: row.status === 'error' ? 'error' : 'success',
-  resultCount: Number(row.result_count),
-  durationMs: Number(row.duration_ms),
-  cacheHit: row.cache_hit === 1,
-  errorMessage: typeof row.error_message === 'string' ? row.error_message : null,
-});
-
 /**
- * Usage storage on the built-in node:sqlite module (no external dependency). The database handle is
- * injected, so tests use an in-memory database and the server a file.
+ * Usage storage on the built-in node:sqlite module (no external dependency). Expects a migrated
+ * database (see schema.ts); statements are prepared once and reused on every request.
  */
 export class SqliteUsageRepository implements UsageRepository {
-  constructor(private readonly db: DatabaseSync) {
-    db.exec(CREATE_TABLE);
+  private readonly insert: StatementSync;
+  private readonly selectLatest: StatementSync;
+
+  constructor(db: DatabaseSync) {
+    this.insert = db.prepare(INSERT);
+    this.selectLatest = db.prepare(SELECT_LATEST);
   }
 
-  save(record: UsageRecord): Promise<void> {
-    this.db.prepare(INSERT).run({ ...record, cacheHit: record.cacheHit ? 1 : 0 });
-    return Promise.resolve();
+  // node:sqlite is synchronous; `async` keeps the Promise contract of UsageRepository, so a failing
+  // statement becomes a rejected promise instead of a synchronous throw.
+  /* eslint-disable @typescript-eslint/require-await */
+  async save(record: UsageRecord): Promise<void> {
+    this.insert.run(toParams(record));
   }
 
-  list(limit: number): Promise<StoredUsageRecord[]> {
-    return Promise.resolve(this.db.prepare(SELECT_LATEST).all(limit).map(toRecord));
+  async list(limit: number): Promise<StoredUsageRecord[]> {
+    return this.selectLatest.all(limit).map(fromRow);
   }
+  /* eslint-enable @typescript-eslint/require-await */
 }

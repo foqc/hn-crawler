@@ -5,6 +5,7 @@ import { SourceUnavailableError } from '../../src/application/errors';
 import type { Entry } from '../../src/domain/entry';
 import { buildApp } from '../../src/http/app';
 import { TtlCache } from '../../src/infrastructure/cache/ttlCache';
+import { migrate } from '../../src/infrastructure/sqlite/schema';
 import { SqliteUsageRepository } from '../../src/infrastructure/sqlite/sqliteUsageRepository';
 import { anEntry } from '../support/entries';
 
@@ -16,6 +17,7 @@ const ENTRIES: Entry[] = [
 // Real service, cache and SQLite (in memory); only the Hacker News source is faked.
 const setup = (fetchEntries: () => Promise<Entry[]> = () => Promise.resolve(ENTRIES)) => {
   const db = new DatabaseSync(':memory:');
+  migrate(db);
   const service = new EntriesService(
     { fetchEntries },
     new TtlCache(60_000, Date.now),

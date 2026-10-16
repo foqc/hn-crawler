@@ -4,6 +4,7 @@ import { loadConfig } from './config';
 import { buildApp } from './http/app';
 import { TtlCache } from './infrastructure/cache/ttlCache';
 import { HackerNewsScraper } from './infrastructure/scraper/hackerNewsScraper';
+import { migrate } from './infrastructure/sqlite/schema';
 import { SqliteUsageRepository } from './infrastructure/sqlite/sqliteUsageRepository';
 
 // Composition root: the only place where concrete implementations are created and wired.
@@ -11,6 +12,7 @@ const main = async (): Promise<void> => {
   const config = loadConfig(process.env);
   const now = (): number => Date.now();
   const db = new DatabaseSync(config.databasePath);
+  migrate(db);
 
   const service = new EntriesService(
     new HackerNewsScraper(fetch),
