@@ -15,7 +15,7 @@ src/
   domain/          business concepts and rules: pure types and functions
   application/     use cases (EntriesService, UsageService) and the ports they need (ports.ts)
   infrastructure/  port implementations: scraper/, cache/, sqlite/
-  http/            Fastify app (routes + schemas)
+  http/            Fastify app; routes/ holds one plugin per resource (route + schema)
   config.ts        environment configuration
   container.ts     composition root: the only place that instantiates and wires implementations
   server.ts        HTTP entrypoint: config -> container -> Fastify, plus process lifecycle

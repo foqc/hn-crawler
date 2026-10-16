@@ -2,8 +2,8 @@ import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastif
 import type { EntriesService } from '../application/entriesService';
 import { SourceUnavailableError } from '../application/errors';
 import type { UsageService } from '../application/usageService';
-import type { FilterName } from '../domain/filters';
-import { entriesRouteSchema, usageRouteSchema } from './schemas';
+import { entriesRoutes } from './routes/entries';
+import { usageRoutes } from './routes/usage';
 
 export interface AppServices {
   readonly entriesService: EntriesService;
@@ -17,6 +17,7 @@ export const buildApp = (
 ): FastifyInstance => {
   const app = Fastify(options);
 
+  // Set before registering the routes so every route plugin inherits it.
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof SourceUnavailableError) {
       request.log.warn({ err: error }, 'Entries source is unavailable');
@@ -28,23 +29,8 @@ export const buildApp = (
     return reply.send(error);
   });
 
-  app.get<{ Querystring: { filter?: FilterName } }>(
-    '/entries',
-    { schema: entriesRouteSchema },
-    async (request) => {
-      const { filter, entries } = await entriesService.getEntries(request.query.filter);
-      return { filter, count: entries.length, entries };
-    },
-  );
-
-  app.get<{ Querystring: { limit: number } }>(
-    '/usage',
-    { schema: usageRouteSchema },
-    async (request) => {
-      const records = await usageService.getUsage(request.query.limit);
-      return { count: records.length, records };
-    },
-  );
+  void app.register(entriesRoutes, { entriesService });
+  void app.register(usageRoutes, { usageService });
 
   return app;
 };
