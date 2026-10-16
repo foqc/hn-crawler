@@ -32,13 +32,23 @@ export class EntriesService {
     try {
       loaded = await this.loadEntries();
     } catch (error) {
-      await this.recordFailure(filter, startedAt, error);
+      await this.saveUsage(filter, startedAt, {
+        status: 'error',
+        resultCount: 0,
+        cacheHit: false,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
       throw error;
     }
 
     // Outside the try block: if saving the usage fails, it must not be recorded again as a failure.
     const entries = filterName ? applyFilter(loaded.entries, filterName) : loaded.entries;
-    await this.recordSuccess(filter, startedAt, entries.length, loaded.cacheHit);
+    await this.saveUsage(filter, startedAt, {
+      status: 'success',
+      resultCount: entries.length,
+      cacheHit: loaded.cacheHit,
+      errorMessage: null,
+    });
     return { filter, entries };
   }
 
@@ -56,29 +66,6 @@ export class EntriesService {
     const entries = await this.source.fetchEntries();
     await this.cache.set(entries);
     return { entries, cacheHit: false };
-  }
-
-  private recordSuccess(
-    filter: AppliedFilter,
-    startedAt: number,
-    resultCount: number,
-    cacheHit: boolean,
-  ): Promise<void> {
-    return this.saveUsage(filter, startedAt, {
-      status: 'success',
-      resultCount,
-      cacheHit,
-      errorMessage: null,
-    });
-  }
-
-  private recordFailure(filter: AppliedFilter, startedAt: number, error: unknown): Promise<void> {
-    return this.saveUsage(filter, startedAt, {
-      status: 'error',
-      resultCount: 0,
-      cacheHit: false,
-      errorMessage: error instanceof Error ? error.message : String(error),
-    });
   }
 
   private saveUsage(
