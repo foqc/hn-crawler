@@ -82,8 +82,11 @@ An unknown filter returns `400`; if Hacker News cannot be reached the API return
   negligible for one small insert per request. `UsageRepository` keeps the rest of the app
   independent of it.
 
-### cheerio instead of regular expressions for parsing
+### cheerio for parsing (no headless browser, no regular expressions)
 
+- Hacker News is rendered on the server: a single HTTP request returns static HTML that already
+  contains every entry. No JavaScript has to run, so a headless browser (Playwright, Puppeteer)
+  would only add weight and slowness; fetching the page and parsing it with cheerio is enough.
 - HTML is a tree, not a flat string: each entry spans two table rows (title row and points/comments
   row), which CSS selectors relate directly (`tr.athing` and its next sibling).
 - cheerio decodes HTML entities (`&#x27;` → `'`) and tolerates attribute order, whitespace and
