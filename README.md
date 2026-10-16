@@ -66,6 +66,34 @@ An unknown filter returns `400`; if Hacker News cannot be reached the API return
 | `CACHE_TTL_MS`  | `60000`     | How long scraped entries are reused (0 = never) |
 | `DATABASE_PATH` | `usage.db`  | SQLite file for the usage log                   |
 
+## Design decisions
+
+### Usage is tracked in the service, not in an HTTP middleware
+
+`EntriesService.getEntries` records one usage row per call, whether it succeeds or fails.
+
+- **Why the service:** storing usage is a business requirement, so it must hold for every
+  entrypoint (the API today, a CLI later), and a CLI never goes through Fastify's hooks. The
+  most useful fields describe the crawler's behaviour — cache hit, result count, source errors —
+  and only the service knows them.
+- **Trade-off:** requests rejected by validation (`400`, e.g. an unknown filter) are not recorded,
+  because Fastify rejects them before the service runs. HTTP-level data (IP, user agent, status
+  code) is not recorded either.
+- **Possible extension:** a lightweight Fastify `onResponse` hook could log that HTTP-level
+  information as a complement — user interaction at the edge, crawler behaviour in the service.
+
+### Cache-aside with an in-memory TTL
+
+The service asks the cache first; on a miss it scrapes Hacker News and stores the result for
+`CACHE_TTL_MS`. The `Cache` interface is just `get()` / `set(value)`, so swapping the in-memory
+`TtlCache` for Redis (`GET` / `SET ... EX`) means one new class and one line in `container.ts`.
+
+- **Trade-off:** concurrent requests that miss at the same moment each scrape once (no cache
+  stampede protection). With one front page and a short TTL, that costs a few extra requests at
+  worst, and explicit code was preferred.
+- In-memory means the cache is per process and is lost on restart; failed scrapes are never
+  cached.
+
 ## Testing
 
 Tests never hit the network. The parser runs against
