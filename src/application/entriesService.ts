@@ -8,6 +8,13 @@ export interface EntriesResult {
   readonly entries: readonly Entry[];
 }
 
+interface LoadedEntries {
+  readonly entries: readonly Entry[];
+  readonly cacheHit: boolean;
+}
+
+type UsageOutcome = Pick<UsageRecord, 'status' | 'resultCount' | 'cacheHit' | 'errorMessage'>;
+
 /** Use cases of the crawler: get (optionally filtered) entries and read the usage log. */
 export class EntriesService {
   constructor(
@@ -18,33 +25,58 @@ export class EntriesService {
   ) {}
 
   async getEntries(filterName?: FilterName): Promise<EntriesResult> {
-    const startedAt = this.now();
     const filter = filterName ?? 'none';
-    const record = (outcome: Omit<UsageRecord, 'requestedAt' | 'filter' | 'durationMs'>) =>
-      this.usage.save({
-        requestedAt: new Date(startedAt).toISOString(),
-        filter,
-        durationMs: this.now() - startedAt,
-        ...outcome,
-      });
-
-    let entries: readonly Entry[];
-    let cacheHit: boolean;
-    try {
-      const cached = await this.cache.get(() => this.source.fetchEntries());
-      entries = filterName ? applyFilter(cached.value, filterName) : cached.value;
-      cacheHit = cached.hit;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      await record({ status: 'error', resultCount: 0, cacheHit: false, errorMessage });
-      throw error;
-    }
-
-    await record({ status: 'success', resultCount: entries.length, cacheHit, errorMessage: null });
+    const { entries } = await this.tracked(filter, () => this.loadEntries(filterName));
     return { filter, entries };
   }
 
   getUsage(limit: number): Promise<StoredUsageRecord[]> {
     return this.usage.list(limit);
+  }
+
+  /** Reads entries through the cache and applies the filter, if any. */
+  private async loadEntries(filterName?: FilterName): Promise<LoadedEntries> {
+    const { value, hit } = await this.cache.get(() => this.source.fetchEntries());
+    return { entries: filterName ? applyFilter(value, filterName) : value, cacheHit: hit };
+  }
+
+  /** Runs an operation and records its usage exactly once, whether it succeeds or fails. */
+  private async tracked(
+    filter: AppliedFilter,
+    operation: () => Promise<LoadedEntries>,
+  ): Promise<LoadedEntries> {
+    const startedAt = this.now();
+
+    const result = await operation().catch(async (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      await this.saveUsage(filter, startedAt, {
+        status: 'error',
+        resultCount: 0,
+        cacheHit: false,
+        errorMessage,
+      });
+      throw error;
+    });
+
+    await this.saveUsage(filter, startedAt, {
+      status: 'success',
+      resultCount: result.entries.length,
+      cacheHit: result.cacheHit,
+      errorMessage: null,
+    });
+    return result;
+  }
+
+  private saveUsage(
+    filter: AppliedFilter,
+    startedAt: number,
+    outcome: UsageOutcome,
+  ): Promise<void> {
+    return this.usage.save({
+      requestedAt: new Date(startedAt).toISOString(),
+      filter,
+      durationMs: this.now() - startedAt,
+      ...outcome,
+    });
   }
 }

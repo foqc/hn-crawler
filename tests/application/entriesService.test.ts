@@ -89,6 +89,20 @@ describe('EntriesService', () => {
     ]);
   });
 
+  it('does not record a request twice when saving its usage fails', async () => {
+    const save = jest.fn<Promise<void>, [UsageRecord]>().mockRejectedValue(new Error('disk full'));
+    const usage: UsageRepository = { save, list: () => Promise.resolve([]) };
+    const service = new EntriesService(
+      { fetchEntries: () => Promise.resolve(ENTRIES) },
+      new TtlCache(60_000, Date.now),
+      usage,
+      Date.now,
+    );
+
+    await expect(service.getEntries()).rejects.toThrow('disk full');
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
   it('reads the usage log from the repository', async () => {
     const { service, list } = setup();
 
