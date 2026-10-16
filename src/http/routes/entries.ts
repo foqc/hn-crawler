@@ -27,6 +27,7 @@ const schema = {
         count: { type: 'integer' },
         entries: { type: 'array', items: entrySchema },
       },
+      required: ['filter', 'count', 'entries'],
     },
   },
 } as const;

@@ -13,6 +13,16 @@ const usageRecordSchema = {
     cacheHit: { type: 'boolean' },
     errorMessage: { type: ['string', 'null'] },
   },
+  required: [
+    'id',
+    'requestedAt',
+    'filter',
+    'status',
+    'resultCount',
+    'durationMs',
+    'cacheHit',
+    'errorMessage',
+  ],
 } as const;
 
 // Fastify validates the query (limit out of range -> 400) and serializes the response from the schema.
@@ -35,6 +45,7 @@ const schema = {
         count: { type: 'integer' },
         records: { type: 'array', items: usageRecordSchema },
       },
+      required: ['count', 'records'],
     },
   },
 } as const;
